@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Discord-like dark theme as default */
+    --background: 220 13% 18%; /* #2f3136 */
+    --foreground: 210 11% 96%; /* #dcddde */
+    --card: 223 7% 20%; /* #36393f */
+    --card-foreground: 210 11% 96%; /* #dcddde */
+    --popover: 223 7% 20%; /* #36393f */
+    --popover-foreground: 210 11% 96%; /* #dcddde */
+    --primary: 235 86% 65%; /* #5865f2 Discord blurple */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 9% 26%; /* #40444b */
+    --secondary-foreground: 210 11% 96%;
+    --muted: 220 9% 26%; /* #40444b */
+    --muted-foreground: 220 9% 46%; /* #72767d */
+    --accent: 220 9% 26%; /* #40444b */
+    --accent-foreground: 210 11% 96%;
+    --destructive: 359 82% 59%; /* #ed4245 Discord red */
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 9% 26%; /* #40444b */
+    --input: 220 9% 26%; /* #40444b */
+    --ring: 235 86% 65%; /* #5865f2 */
+    --radius: 0.5rem;
+  }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 235 86% 65%; /* Keep Discord blurple in light mode too */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 235 86% 65%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
