@@ -21,7 +21,18 @@ import {
 } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 
-const ITEM_TIERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+interface PricingData {
+  lastUpdated: string;
+  version: string;
+  items: {
+    [itemName: string]: {
+      [tierKey: string]: number;
+    };
+  };
+  notes: {
+    [key: string]: string;
+  };
+}
 
 export default function CreateOrderPage() {
   const { data: session, status } = useSession();
@@ -35,6 +46,52 @@ export default function CreateOrderPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [pricingData, setPricingData] = useState<PricingData | null>(null);
+  const [pricingLoading, setPricingLoading] = useState(true);
+
+  // Fetch pricing data on component mount
+  useEffect(() => {
+    async function fetchPricingData() {
+      try {
+        const response = await fetch("/api/pricing/data");
+        if (response.ok) {
+          const data = await response.json();
+          setPricingData(data);
+        } else {
+          console.error("Failed to fetch pricing data");
+        }
+      } catch (error) {
+        console.error("Error fetching pricing data:", error);
+      } finally {
+        setPricingLoading(false);
+      }
+    }
+
+    fetchPricingData();
+  }, []);
+
+  // Auto-populate price when item or tier changes
+  useEffect(() => {
+    if (pricingData && formData.itemName && formData.tier) {
+      const item = pricingData.items[formData.itemName];
+      if (item) {
+        const tierKey = `tier${formData.tier}`;
+        const price = item[tierKey];
+        if (price !== undefined) {
+          setFormData((prev) => ({
+            ...prev,
+            pricePerUnit: price.toString(),
+          }));
+        } else {
+          // Clear price if tier not available for this item
+          setFormData((prev) => ({
+            ...prev,
+            pricePerUnit: "",
+          }));
+        }
+      }
+    }
+  }, [pricingData, formData.itemName, formData.tier]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -42,13 +99,31 @@ export default function CreateOrderPage() {
     }
   }, [status, router]);
 
-  if (status === "loading") {
+  if (status === "loading" || pricingLoading) {
     return <div>Loading...</div>;
   }
 
   if (!session) {
     return null;
   }
+
+  // Get available items from pricing data
+  const availableItems = pricingData
+    ? Object.keys(pricingData.items).sort()
+    : [];
+
+  // Get available tiers for selected item
+  const getAvailableTiersForItem = (itemName: string): number[] => {
+    if (!pricingData || !itemName) return [];
+    const item = pricingData.items[itemName];
+    if (!item) return [];
+
+    return Object.keys(item)
+      .map((key) => parseInt(key.replace("tier", "")))
+      .sort((a, b) => a - b);
+  };
+
+  const availableTiers = getAvailableTiersForItem(formData.itemName);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,6 +180,25 @@ export default function CreateOrderPage() {
     }
   };
 
+  const handleItemNameChange = (value: string) => {
+    // Reset tier and price when item changes
+    setFormData((prev) => ({
+      ...prev,
+      itemName: value,
+      tier: 1,
+      pricePerUnit: "",
+    }));
+  };
+
+  const handleTierChange = (value: number) => {
+    // Reset price when tier changes (will be auto-populated by useEffect)
+    setFormData((prev) => ({
+      ...prev,
+      tier: value,
+      pricePerUnit: "",
+    }));
+  };
+
   const handleInputChange = (field: string, value: string | number) => {
     setFormData((prev) => ({
       ...prev,
@@ -128,7 +222,9 @@ export default function CreateOrderPage() {
     <div className="container mx-auto px-6 py-8">
       <div className="max-w-2xl mx-auto space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Create New Order</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Create New Order
+          </h1>
           <p className="text-muted-foreground">
             Post a new {formData.orderType.toLowerCase()} order for other cohort
             members
@@ -148,7 +244,9 @@ export default function CreateOrderPage() {
                 <Label htmlFor="orderType">Order Type</Label>
                 <Select
                   value={formData.orderType}
-                  onValueChange={(value) => handleInputChange("orderType", value)}
+                  onValueChange={(value) =>
+                    handleInputChange("orderType", value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select order type" />
@@ -169,36 +267,55 @@ export default function CreateOrderPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="itemName">Item Name</Label>
-                <Input
-                  id="itemName"
-                  type="text"
-                  placeholder="e.g., Fish, Bulbs, Salt, etc."
+                <Select
                   value={formData.itemName}
-                  onChange={(e) => handleInputChange("itemName", e.target.value)}
-                  maxLength={100}
-                  required
-                />
+                  onValueChange={handleItemNameChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select an item" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableItems.map((itemName) => (
+                      <SelectItem key={itemName} value={itemName}>
+                        <span className="capitalize">{itemName}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Choose from available items with pricing data
+                </p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="tier">Tier</Label>
                 <Select
                   value={formData.tier.toString()}
-                  onValueChange={(value) =>
-                    handleInputChange("tier", parseInt(value))
-                  }
+                  onValueChange={(value) => handleTierChange(parseInt(value))}
+                  disabled={!formData.itemName}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a tier" />
+                    <SelectValue
+                      placeholder={
+                        formData.itemName
+                          ? "Select a tier"
+                          : "Select item first"
+                      }
+                    />
                   </SelectTrigger>
                   <SelectContent>
-                    {ITEM_TIERS.map((tier) => (
+                    {availableTiers.map((tier) => (
                       <SelectItem key={tier} value={tier.toString()}>
                         Tier {tier}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {formData.itemName && availableTiers.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-red-500">
+                    No tiers available for this item
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -211,11 +328,12 @@ export default function CreateOrderPage() {
                     min="0.001"
                     placeholder="0.000"
                     value={formData.pricePerUnit}
-                    onChange={(e) =>
-                      handleInputChange("pricePerUnit", e.target.value)
-                    }
-                    required
+                    readOnly
+                    className="bg-muted cursor-not-allowed"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Price is automatically set based on current market rates
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -226,7 +344,9 @@ export default function CreateOrderPage() {
                     min="1"
                     placeholder="1"
                     value={formData.amount}
-                    onChange={(e) => handleInputChange("amount", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("amount", e.target.value)
+                    }
                     required
                   />
                 </div>
@@ -240,7 +360,9 @@ export default function CreateOrderPage() {
                   <p>
                     <span className="font-medium">Type:</span>{" "}
                     <span>
-                      {formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1).toLowerCase()} order
+                      {formData.orderType.charAt(0).toUpperCase() +
+                        formData.orderType.slice(1).toLowerCase()}{" "}
+                      order
                     </span>
                   </p>
                   <p>
@@ -281,14 +403,17 @@ export default function CreateOrderPage() {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isLoading}
+                <Button
+                  type="submit"
+                  disabled={isLoading || !formData.pricePerUnit}
                   className="bg-green-800 hover:bg-green-700 text-white"
                 >
                   {isLoading
                     ? "Creating..."
-                    : `Create ${formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1).toLowerCase()} Order`}
+                    : `Create ${
+                        formData.orderType.charAt(0).toUpperCase() +
+                        formData.orderType.slice(1).toLowerCase()
+                      } Order`}
                 </Button>
               </div>
             </form>
