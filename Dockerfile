@@ -32,9 +32,9 @@ COPY . .
 # Create public directory if it doesn't exist
 RUN mkdir -p public
 
-# Generate Prisma client and build with cache
+# Generate Prisma client, compile seed scripts, and build with cache
 RUN --mount=type=cache,target=/tmp/.buildcache \
-    npx prisma generate && npm run build
+    npx prisma generate && npm run build:seed-scripts && npm run build
 
 # Production image
 FROM base AS runner
@@ -56,6 +56,7 @@ RUN useradd --system --uid 1001 --gid nodejs nextjs
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
 
 # Generate Prisma client in production

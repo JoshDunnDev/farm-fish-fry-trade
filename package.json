@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:seed-scripts": "npx tsc scripts/seed-production.ts --outDir dist --target es2020 --module commonjs --moduleResolution node --esModuleInterop --allowSyntheticDefaultImports --skipLibCheck",
     "start": "next start",
     "lint": "next lint",
     "db:push": "prisma db push",
@@ -12,7 +13,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-pricing": "tsx scripts/seed-pricing.ts",
-    "db:seed-production": "tsx scripts/seed-production.ts"
+    "db:seed-production": "node dist/seed-production.js"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
