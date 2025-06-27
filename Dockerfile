@@ -19,9 +19,6 @@ COPY . .
 # Create public directory if it doesn't exist
 RUN mkdir -p public
 
-# Set environment variable to use library engine (doesn't require write access)
-ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/@prisma/engines/libquery_engine-linux-musl-openssl-3.0.x.so.node
-
 # Generate Prisma client and ensure engines are properly set up
 RUN npx prisma generate
 # Pre-warm the engines to avoid runtime generation
@@ -36,8 +33,6 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-# Use library engine to avoid write permissions issues
-ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/@prisma/engines/libquery_engine-linux-musl-openssl-3.0.x.so.node
 
 # Install curl and openssl for health checks and Prisma
 RUN apk add --no-cache curl openssl netcat-openbsd
@@ -64,8 +59,9 @@ RUN chmod +x docker-entrypoint.sh
 RUN chown -R nextjs:nodejs /app/node_modules
 RUN chown -R nextjs:nodejs /app/prisma
 
-# Ensure Prisma engines directory is writable
-RUN chown -R nextjs:nodejs /app/node_modules/@prisma/engines || true
+# Regenerate Prisma client with proper ownership
+RUN npx prisma generate
+RUN chown -R nextjs:nodejs /app/node_modules/@prisma || true
 RUN chown -R nextjs:nodejs /app/node_modules/.prisma || true
 
 USER nextjs
