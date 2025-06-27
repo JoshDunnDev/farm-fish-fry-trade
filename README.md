@@ -23,16 +23,15 @@ A full-stack web application for managing and fulfilling trade orders between me
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 18+ (for development)
 - Docker and Docker Compose
 - Discord application for OAuth
 
-### 1. Clone and Install
+### 1. Clone the Repository
 
 ```bash
 git clone <your-repo-url>
 cd farm-fish-fry-trade
-npm install
 ```
 
 ### 2. Set up Discord OAuth
@@ -57,13 +56,25 @@ cp env.example .env.local
 
 ### 4. Start the Application
 
-```bash
-# Start PostgreSQL and the app with Docker Compose
-docker-compose up -d
+#### Production Deployment (Recommended)
 
-# Or run locally (requires local PostgreSQL):
-npm run db:push  # Set up database schema
-npm run dev      # Start development server
+```bash
+# Test the deployment locally
+./deploy.sh
+
+# For production deployment with Portainer, see DEPLOYMENT.md
+```
+
+#### Development Mode
+
+```bash
+# Install dependencies (for development)
+npm install
+
+# Start services for development
+docker-compose up -d db  # Start only database
+npm run db:push         # Set up database schema
+npm run dev            # Start development server
 ```
 
 ### 5. Access the Application
@@ -71,6 +82,15 @@ npm run dev      # Start development server
 - Open http://localhost:3000
 - Click "Sign in with Discord"
 - Set your in-game name in your profile
+
+## Production Deployment
+
+For production deployment with Portainer or Docker Compose, see **[DEPLOYMENT.md](DEPLOYMENT.md)** for detailed instructions.
+
+**Quick deployment:**
+1. Copy `env.example` to `.env` and configure your settings
+2. Set up Discord OAuth with your production URL
+3. Deploy using Docker Compose or import into Portainer
 
 ## Project Structure
 

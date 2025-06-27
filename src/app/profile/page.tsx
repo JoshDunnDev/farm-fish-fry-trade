@@ -115,8 +115,7 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="space-y-6">
           {session.user?.inGameName && (
-            <div className="flex items-center space-x-4 p-4 bg-muted/50 rounded-lg">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            <div className="flex items-center p-4 bg-muted/50 rounded-lg">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">
                   Current BitCraft Character
@@ -160,7 +159,11 @@ export default function ProfilePage() {
               </div>
             )}
 
-            <Button type="submit" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              disabled={isLoading}
+              className="bg-green-800 hover:bg-green-700 text-white"
+            >
               {isLoading ? "Updating..." : "Update Profile"}
             </Button>
           </form>

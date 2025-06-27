@@ -1,0 +1,29 @@
+{
+  "lastUpdated": "2025-06-26",
+  "version": "0.1.0",
+  "items": {
+    "salt": {
+      "tier1": 4,
+      "tier2": 4,
+      "tier3": 4,
+      "tier4": 4
+    },
+    "fish": {
+      "tier1": 1.333,
+      "tier2": 1.666,
+      "tier3": 2,
+      "tier4": 2.333
+    },
+    "bulb": {
+      "tier1": 0.5,
+      "tier2": 0.625,
+      "tier3": 0.75,
+      "tier4": 0.875
+    }
+  },
+  "notes": {
+    "pricing": "Prices are in Hex Coins (HC) per piece.",
+    "updates": "Update this file as market conditions change. Restart the application after changes.",
+    "structure": "Items are organized by name, with prices for each tier."
+  }
+} 

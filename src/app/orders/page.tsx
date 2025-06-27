@@ -150,6 +150,46 @@ export default function OrdersPage() {
     }
   };
 
+  const handleMarkReady = async (orderId: string) => {
+    try {
+      const response = await fetch(`/api/orders/${orderId}/ready`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        fetchOrders(); // Refresh orders
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to mark order as ready");
+      }
+    } catch (error) {
+      console.error("Error marking order as ready:", error);
+      alert("Failed to mark order as ready");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm("Are you sure you want to delete this order?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/orders?id=${orderId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        fetchOrders(); // Refresh orders
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to delete order");
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      alert("Failed to delete order");
+    }
+  };
+
   if (status === "loading" || loading) {
     return (
       <div className="space-y-8">
@@ -169,6 +209,11 @@ export default function OrdersPage() {
 
   const filteredOrders = (activeTab === "all" ? orders : myOrders).filter(
     (order) => {
+      // On "All" tab, exclude fulfilled orders
+      if (activeTab === "all" && order.status === "FULFILLED") {
+        return false;
+      }
+      
       if (
         filters.orderType !== "ALL" &&
         order.orderType !== filters.orderType
@@ -187,6 +232,8 @@ export default function OrdersPage() {
       open: orderList.filter((order) => order.status === "OPEN").length,
       inProgress: orderList.filter((order) => order.status === "IN_PROGRESS")
         .length,
+      readyToTrade: orderList.filter((order) => order.status === "READY_TO_TRADE")
+        .length,
       fulfilled: orderList.filter((order) => order.status === "FULFILLED")
         .length,
       buy: orderList.filter((order) => order.orderType === "BUY").length,
@@ -194,10 +241,23 @@ export default function OrdersPage() {
     };
   };
 
-  const counts = getOrderCounts(activeTab === "all" ? orders : myOrders);
+  // Get counts based on what's actually shown (excluding fulfilled on "all" tab)
+  const countsSource = activeTab === "all" 
+    ? orders.filter(order => order.status !== "FULFILLED")
+    : myOrders;
+  const counts = getOrderCounts(countsSource);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
+
+  const formatPrice = (price: number) => {
+    // Remove unnecessary trailing zeros and add HC suffix
+    return price % 1 === 0 ? `${price.toFixed(0)} HC` : `${price.toFixed(3).replace(/\.?0+$/, '')} HC`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -212,6 +272,12 @@ export default function OrdersPage() {
         return (
           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
             In Progress
+          </span>
+        );
+      case "READY_TO_TRADE":
+        return (
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+            Ready to Trade
           </span>
         );
       case "FULFILLED":
@@ -256,234 +322,287 @@ export default function OrdersPage() {
   };
 
   const canCompleteOrder = (order: Order) => {
+    // For buy orders, they must be READY_TO_TRADE first (not IN_PROGRESS)
+    if (order.orderType === "BUY" && order.status === "IN_PROGRESS") {
+      return false;
+    }
+    
     return (
-      order.status === "IN_PROGRESS" &&
+      (order.status === "IN_PROGRESS" || order.status === "READY_TO_TRADE") &&
       currentUser &&
       (order.creator.id === currentUser.id ||
         order.claimer?.id === currentUser.id)
     );
   };
 
+  const canMarkReady = (order: Order) => {
+    return (
+      order.status === "IN_PROGRESS" &&
+      order.orderType === "BUY" && // Only buy orders need manual "mark ready"
+      currentUser &&
+      order.claimer?.id === currentUser.id
+    );
+  };
+
+  const canDeleteOrder = (order: Order) => {
+    return (
+      order.status === "OPEN" &&
+      currentUser &&
+      order.creator.id === currentUser.id
+    );
+  };
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Trade Orders</h1>
-          <p className="text-muted-foreground">
-            View, create, claim, and fulfill trade orders
+          <h1 className="text-2xl font-bold tracking-tight">Trade Orders</h1>
+          <p className="text-sm text-muted-foreground">
+            View and manage trade orders
           </p>
         </div>
-        <Button asChild>
+        <Button asChild size="sm" className="bg-green-800 hover:bg-green-700 text-white">
           <Link href="/orders/create">Create Order</Link>
         </Button>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex space-x-1 bg-muted p-1 rounded-lg w-fit">
-        <button
-          onClick={() => setActiveTab("all")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "all"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          All Orders ({orders.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("my")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "my"
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          My Orders ({myOrders.length})
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Order Type</label>
-          <Select
-            value={filters.orderType}
-            onValueChange={(value) =>
-              setFilters((prev) => ({ ...prev, orderType: value }))
-            }
+      {/* Tab Navigation & Filters - Condensed */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex space-x-1 bg-muted p-1 rounded-lg">
+          <button
+            onClick={() => setActiveTab("all")}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              activeTab === "all"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Types</SelectItem>
-              <SelectItem value="BUY">Buy Orders</SelectItem>
-              <SelectItem value="SELL">Sell Orders</SelectItem>
-            </SelectContent>
-          </Select>
+            All ({orders.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("my")}
+            className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              activeTab === "my"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Mine ({myOrders.length})
+          </button>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Status</label>
-          <Select
-            value={filters.status}
-            onValueChange={(value) =>
-              setFilters((prev) => ({ ...prev, status: value }))
-            }
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Status</SelectItem>
-              <SelectItem value="OPEN">Open</SelectItem>
-              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-              <SelectItem value="FULFILLED">Fulfilled</SelectItem>
-            </SelectContent>
-          </Select>
+        <Select
+          value={filters.orderType}
+          onValueChange={(value) =>
+            setFilters((prev) => ({ ...prev, orderType: value }))
+          }
+        >
+          <SelectTrigger className="w-32 h-8">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Types</SelectItem>
+            <SelectItem value="BUY">Buy</SelectItem>
+            <SelectItem value="SELL">Sell</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filters.status}
+          onValueChange={(value) =>
+            setFilters((prev) => ({ ...prev, status: value }))
+          }
+        >
+          <SelectTrigger className="w-36 h-8">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Status</SelectItem>
+            <SelectItem value="OPEN">Open</SelectItem>
+            <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+            <SelectItem value="READY_TO_TRADE">Ready</SelectItem>
+            <SelectItem value="FULFILLED">Fulfilled</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="text-sm text-muted-foreground">
+          {filteredOrders.length} orders
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-green-700">Open</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{counts.open}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-yellow-700">
-              In Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{counts.inProgress}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-blue-700">Fulfilled</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{counts.fulfilled}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-blue-700">Buy Orders</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{counts.buy}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-green-700">
-              Sell Orders
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{counts.sell}</p>
-          </CardContent>
-        </Card>
+      {/* Compact Stats */}
+      <div className="flex flex-wrap gap-2 text-xs">
+        <span className="px-2 py-1 bg-green-800 text-white dark:bg-green-700 rounded">
+          Open: {counts.open}
+        </span>
+        <span className="px-2 py-1 bg-amber-800 text-white dark:bg-amber-700 rounded">
+          In Progress: {counts.inProgress}
+        </span>
+        <span className="px-2 py-1 bg-blue-800 text-white dark:bg-blue-700 rounded">
+          Ready: {counts.readyToTrade}
+        </span>
+        <span className="px-2 py-1 bg-slate-800 text-white dark:bg-slate-700 rounded">
+          Fulfilled: {counts.fulfilled}
+        </span>
+        <span className="px-2 py-1 bg-slate-900 text-white dark:bg-slate-800 rounded">
+          Buy: {counts.buy} | Sell: {counts.sell}
+        </span>
       </div>
 
-      {/* Orders List */}
+      {/* Compact Orders Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>
-            {activeTab === "all" ? "All Orders" : "My Orders"} (
-            {filteredOrders.length})
-          </CardTitle>
-          <CardDescription>
-            {activeTab === "all"
-              ? "All trade orders from the community"
-              : "Orders you've created or claimed"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {filteredOrders.length === 0 ? (
-            <div className="text-center py-8">
+            <div className="text-center py-8 px-4">
               <p className="text-muted-foreground">No orders found</p>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-1">
                 {activeTab === "all"
-                  ? "Try adjusting your filters or create the first order!"
+                  ? "Try adjusting filters or create the first order!"
                   : "You haven't created or claimed any orders yet."}
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredOrders.map((order) => (
-                <div key={order.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">
-                          T{order.tier} {order.itemName}
-                        </h3>
-                        {getOrderTypeBadge(order.orderType)}
-                        {getStatusBadge(order.status)}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {order.amount} units @ {order.pricePerUnit.toFixed(3)}{" "}
-                        Hex Coin each
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Total: {Math.ceil(order.amount * order.pricePerUnit)}{" "}
-                        Hex Coin
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      {canClaimOrder(order) && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleClaimOrder(order.id)}
-                          className="text-xs"
-                        >
-                          Claim
-                        </Button>
-                      )}
-                      {canCompleteOrder(order) && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleCompleteOrder(order.id)}
-                          className="text-xs"
-                        >
-                          Complete
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground space-y-1 border-t pt-2">
-                    <p>
-                      Created by:{" "}
-                      {order.creator.inGameName || order.creator.discordName}
-                    </p>
-                    {order.claimer && (
-                      <p>
-                        Claimed by:{" "}
-                        {order.claimer.inGameName || order.claimer.discordName}
-                      </p>
-                    )}
-                    <div className="flex justify-between">
-                      <span>Created: {formatDate(order.createdAt)}</span>
-                      {order.fulfilledAt && (
-                        <span>Fulfilled: {formatDate(order.fulfilledAt)}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                         <div className="overflow-x-auto">
+               <table className="w-full text-sm table-fixed">
+                 <colgroup>
+                   <col className="w-48" />
+                   <col className="w-20" />
+                   <col className="w-24" />
+                   <col className="w-24" />
+                   <col className="w-28" />
+                   <col className="w-28" />
+                   <col className="w-32" />
+                   <col className="w-32" />
+                   <col className="w-28" />
+                 </colgroup>
+                 <thead className="border-b bg-muted/50">
+                   <tr>
+                     <th className="text-left px-3 py-2 font-medium">Item & Date</th>
+                     <th className="text-left px-2 py-2 font-medium">Type</th>
+                     <th className="text-left px-2 py-2 font-medium">Status</th>
+                     <th className="text-left px-2 py-2 font-medium">Amount</th>
+                     <th className="text-left px-2 py-2 font-medium">Price/Unit</th>
+                     <th className="text-left px-2 py-2 font-medium">Total</th>
+                     <th className="text-left px-2 py-2 font-medium">Creator</th>
+                     <th className="text-left px-2 py-2 font-medium">Claimer</th>
+                     <th className="text-left px-3 py-2 font-medium">Actions</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {filteredOrders.map((order, index) => (
+                     <tr
+                       key={order.id}
+                       className={`border-b hover:bg-muted/30 ${
+                         index % 2 === 0 ? "bg-background" : "bg-muted/10"
+                       }`}
+                     >
+                       <td className="px-3 py-2">
+                         <div className="font-medium truncate">
+                           T{order.tier} {order.itemName}
+                         </div>
+                         <div className="text-xs text-muted-foreground truncate">
+                           {formatDateTime(order.createdAt)}
+                         </div>
+                       </td>
+                       <td className="px-2 py-2 text-left">
+                         {order.orderType === "BUY" ? (
+                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-800 text-white dark:bg-blue-700 dark:text-white">
+                             Buy
+                           </span>
+                         ) : (
+                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-800 text-white dark:bg-orange-700 dark:text-white">
+                             Sell
+                           </span>
+                         )}
+                       </td>
+                       <td className="px-2 py-2 text-left">
+                         {order.status === "OPEN" && (
+                           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-800 text-white dark:bg-green-700 dark:text-white">
+                             Open
+                           </span>
+                         )}
+                         {order.status === "IN_PROGRESS" && (
+                           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-800 text-white dark:bg-amber-700 dark:text-white">
+                             In Progress
+                           </span>
+                         )}
+                         {order.status === "READY_TO_TRADE" && (
+                           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-800 text-white dark:bg-blue-700 dark:text-white">
+                             Ready
+                           </span>
+                         )}
+                         {order.status === "FULFILLED" && (
+                           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-white dark:bg-slate-700 dark:text-white">
+                             Fulfilled
+                           </span>
+                         )}
+                       </td>
+                       <td className="px-2 py-2 text-left font-mono">
+                         {order.amount.toLocaleString()}
+                       </td>
+                       <td className="px-2 py-2 text-left font-mono">
+                         {formatPrice(order.pricePerUnit)}
+                       </td>
+                       <td className="px-2 py-2 text-left font-mono font-medium">
+                         {formatPrice(Math.ceil(order.amount * order.pricePerUnit))}
+                       </td>
+                       <td className="px-2 py-2">
+                         <div className="text-sm truncate">
+                           {order.creator.inGameName || order.creator.discordName}
+                         </div>
+                       </td>
+                       <td className="px-2 py-2">
+                         <div className="text-sm truncate">
+                           {order.claimer
+                             ? order.claimer.inGameName || order.claimer.discordName
+                             : "-"}
+                         </div>
+                       </td>
+                       <td className="px-3 py-2">
+                         <div className="flex gap-1 justify-start">
+                           {canClaimOrder(order) && (
+                             <Button
+                               size="sm"
+                               onClick={() => handleClaimOrder(order.id)}
+                               className="h-6 w-20 text-xs px-2 py-1 bg-blue-800 hover:bg-blue-700 text-white"
+                             >
+                               Claim
+                             </Button>
+                           )}
+                           {canMarkReady(order) && (
+                             <Button
+                               size="sm"
+                               onClick={() => handleMarkReady(order.id)}
+                               className="h-6 w-20 text-xs px-2 py-1 bg-amber-800 hover:bg-amber-700 text-white"
+                             >
+                               Ready
+                             </Button>
+                           )}
+                           {canCompleteOrder(order) && (
+                             <Button
+                               size="sm"
+                               onClick={() => handleCompleteOrder(order.id)}
+                               className="h-6 w-20 text-xs px-2 py-1 bg-green-800 hover:bg-green-700 text-white"
+                             >
+                               Complete
+                             </Button>
+                           )}
+                           {canDeleteOrder(order) && (
+                             <Button
+                               size="sm"
+                               onClick={() => handleDeleteOrder(order.id)}
+                               className="h-6 w-20 text-xs px-2 py-1 bg-red-800 hover:bg-red-700 text-white"
+                             >
+                               Delete
+                             </Button>
+                           )}
+                         </div>
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
           )}
         </CardContent>
       </Card>

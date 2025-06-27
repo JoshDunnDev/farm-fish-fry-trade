@@ -28,7 +28,7 @@ export default function SignInPage() {
     <div className="fixed inset-0 flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">🌾🐟🍳 FarmFishFryTrade</CardTitle>
+          <CardTitle className="text-2xl">FarmFishFryTrade</CardTitle>
           <CardDescription>
             Sign in to access the BitCraft trading hub
           </CardDescription>

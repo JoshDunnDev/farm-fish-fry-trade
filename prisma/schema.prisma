@@ -91,5 +91,6 @@ enum OrderType {
 enum OrderStatus {
   OPEN
   IN_PROGRESS
+  READY_TO_TRADE
   FULFILLED
 }

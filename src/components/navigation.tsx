@@ -46,26 +46,58 @@ export function Navigation() {
         <div className="flex items-center space-x-6">
           <Link
             href="/"
-            className="text-xl font-bold hover:text-primary transition-colors"
+            className="text-xl font-bold"
           >
             FarmFishFryTrade
           </Link>
           <div className="hidden md:flex items-center space-x-4">
             <Link
               href="/orders"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className={`text-sm font-medium transition-colors ${
+                pathname === "/orders"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
               Orders
             </Link>
             <Link
               href="/orders/create"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className={`text-sm font-medium transition-colors ${
+                pathname === "/orders/create"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
               Create Order
             </Link>
             <Link
+              href="/pricing"
+              className={`text-sm font-medium transition-colors ${
+                pathname === "/pricing"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Pricing
+            </Link>
+            <Link
+              href="/stats"
+              className={`text-sm font-medium transition-colors ${
+                pathname === "/stats"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Stats
+            </Link>
+            <Link
               href="/profile"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className={`text-sm font-medium transition-colors ${
+                pathname === "/profile"
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
               Profile
             </Link>

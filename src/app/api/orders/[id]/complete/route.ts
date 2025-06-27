@@ -37,9 +37,9 @@ export async function POST(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    if (order.status !== "IN_PROGRESS") {
+    if (order.status !== "IN_PROGRESS" && order.status !== "READY_TO_TRADE") {
       return NextResponse.json(
-        { error: "Order is not in progress" },
+        { error: "Order is not ready to be completed" },
         { status: 400 }
       );
     }

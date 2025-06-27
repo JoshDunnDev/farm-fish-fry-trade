@@ -154,16 +154,10 @@ export default function CreateOrderPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="BUY">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                      <span>Buy Order - I want to buy</span>
-                    </div>
+                    <span>Buy Order - I want to buy</span>
                   </SelectItem>
                   <SelectItem value="SELL">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span>Sell Order - I have to sell</span>
-                    </div>
+                    <span>Sell Order - I have to sell</span>
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -242,20 +236,11 @@ export default function CreateOrderPage() {
                 Order Summary:
               </p>
               <div className="space-y-1 text-sm">
-                <p className="flex items-center gap-2">
-                  <span className="font-medium">Type:</span>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        formData.orderType === "BUY"
-                          ? "bg-blue-500"
-                          : "bg-green-500"
-                      }`}
-                    ></div>
-                    <span className={getOrderTypeColor()}>
-                      {formData.orderType} Order
-                    </span>
-                  </div>
+                <p>
+                  <span className="font-medium">Type:</span>{" "}
+                  <span>
+                    {formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1).toLowerCase()} order
+                  </span>
                 </p>
                 <p>
                   <span className="font-medium">Item:</span>{" "}
@@ -295,10 +280,14 @@ export default function CreateOrderPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="bg-green-800 hover:bg-green-700 text-white"
+              >
                 {isLoading
                   ? "Creating..."
-                  : `Create ${formData.orderType} Order`}
+                  : `Create ${formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1).toLowerCase()} Order`}
               </Button>
             </div>
           </form>

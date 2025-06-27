@@ -18,55 +18,45 @@ export async function POST(
   try {
     const orderId = params.id;
 
-    // Get or create user
-    let user = await prisma.user.findUnique({
+    // Get user
+    const user = await prisma.user.findUnique({
       where: { discordId: session.user.id },
     });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          discordId: session.user.id,
-          discordName: session.user.name || "Unknown User",
-          inGameName: null,
-        },
-      });
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check if order exists and is available to claim
+    // Check if order exists and user can mark it as ready
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { creator: true },
+      include: { creator: true, claimer: true },
     });
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    if (order.status !== "OPEN") {
+    if (order.status !== "IN_PROGRESS") {
       return NextResponse.json(
-        { error: "Order is not available for claiming" },
+        { error: "Order must be in progress to mark as ready" },
         { status: 400 }
       );
     }
 
-    if (order.creatorId === user.id) {
+    // Only the claimer (person fulfilling the order) can mark it as ready
+    if (order.claimerId !== user.id) {
       return NextResponse.json(
-        { error: "Cannot claim your own order" },
+        { error: "Only the person fulfilling the order can mark it as ready" },
         { status: 400 }
       );
     }
 
-    // Claim the order
-    // For SELL orders, go straight to READY_TO_TRADE since seller already has the item
-    // For BUY orders, go to IN_PROGRESS since fulfiller needs to gather the item
-    const newStatus = order.orderType === "SELL" ? "READY_TO_TRADE" : "IN_PROGRESS";
-    
+    // Mark the order as ready to trade
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: newStatus,
-        claimerId: user.id,
+        status: "READY_TO_TRADE",
         updatedAt: new Date(),
       },
       include: {
@@ -77,10 +67,10 @@ export async function POST(
 
     return NextResponse.json(updatedOrder);
   } catch (error) {
-    console.error("Error claiming order:", error);
+    console.error("Error marking order as ready:", error);
     return NextResponse.json(
-      { error: "Failed to claim order" },
+      { error: "Failed to mark order as ready" },
       { status: 500 }
     );
   }
-}
+} 
