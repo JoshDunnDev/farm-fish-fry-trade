@@ -19,8 +19,10 @@ COPY . .
 # Create public directory if it doesn't exist
 RUN mkdir -p public
 
-# Generate Prisma client in builder stage
+# Generate Prisma client and ensure engines are properly set up
 RUN npx prisma generate
+# Pre-warm the engines to avoid runtime generation
+RUN npx prisma version
 
 # Build the application
 RUN npm run build
@@ -56,6 +58,10 @@ RUN chmod +x docker-entrypoint.sh
 # Change ownership of critical directories to nextjs user
 RUN chown -R nextjs:nodejs /app/node_modules
 RUN chown -R nextjs:nodejs /app/prisma
+
+# Ensure Prisma engines directory is writable
+RUN chown -R nextjs:nodejs /app/node_modules/@prisma/engines || true
+RUN chown -R nextjs:nodejs /app/node_modules/.prisma || true
 
 USER nextjs
 

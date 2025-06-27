@@ -56,7 +56,8 @@ done
 
 # Run database migrations (try but don't fail if it doesn't work)
 echo "🗃️  Running database migrations..."
-npx prisma db push --accept-data-loss 2>/dev/null || echo "⚠️  Migration skipped (may already be up to date)"
+# Use db push with skip-generate to avoid regenerating the client
+npx prisma db push --skip-generate --accept-data-loss 2>/dev/null || echo "⚠️  Migration skipped (may already be up to date)"
 
 # Seed database if requested
 if [ "$SEED_DATABASE" = "true" ]; then
