@@ -1,6 +1,6 @@
 "use client";
 
-import { signIn, getSession } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,18 +11,18 @@ import {
 } from "@/components/ui/card";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSessionContext } from "@/contexts/SessionContext";
 
 export default function SignInPage() {
   const router = useRouter();
+  const { session } = useSessionContext();
 
   useEffect(() => {
     // Check if user is already signed in
-    getSession().then((session) => {
-      if (session) {
-        router.push("/");
-      }
-    });
-  }, [router]);
+    if (session) {
+      router.push("/");
+    }
+  }, [session, router]);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 bg-background">

@@ -14,6 +14,12 @@ export async function GET(request: NextRequest) {
     const orderType = searchParams.get("orderType");
     const status = searchParams.get("status");
     const userId = searchParams.get("userId");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const includeUserData = searchParams.get("includeUserData") === "true";
+
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
 
     const where: any = {};
 
@@ -28,33 +34,88 @@ export async function GET(request: NextRequest) {
       where.status = status;
     }
 
+    let currentUser = null;
     if (userId) {
       // The userId parameter is actually the Discord ID from the session
       // We need to find the user's database ID first
-      const user = await prisma.user.findUnique({
+      currentUser = await prisma.user.findUnique({
         where: { discordId: userId },
+        select: {
+          id: true,
+          discordId: true,
+          discordName: true,
+          inGameName: true,
+        },
       });
 
-      if (user) {
-        where.OR = [{ creatorId: user.id }, { claimerId: user.id }];
+      if (currentUser) {
+        where.OR = [
+          { creatorId: currentUser.id },
+          { claimerId: currentUser.id },
+        ];
       } else {
         // If user not found, return empty array
-        return NextResponse.json([]);
+        return NextResponse.json({
+          orders: [],
+          totalCount: 0,
+          currentUser: null,
+          hasMore: false,
+          page,
+          limit,
+        });
       }
     }
 
+    // Get total count for pagination
+    const totalCount = await prisma.order.count({ where });
+
+    // Optimize select fields - only get what we need
     const orders = await prisma.order.findMany({
       where,
-      include: {
-        creator: true,
-        claimer: true,
+      select: {
+        id: true,
+        itemName: true,
+        tier: true,
+        pricePerUnit: true,
+        amount: true,
+        orderType: true,
+        status: true,
+        createdAt: true,
+        fulfilledAt: true,
+        creator: {
+          select: {
+            id: true,
+            discordName: true,
+            inGameName: true,
+          },
+        },
+        claimer: {
+          select: {
+            id: true,
+            discordName: true,
+            inGameName: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
       },
+      skip: offset,
+      take: limit,
     });
 
-    return NextResponse.json(orders);
+    const hasMore = offset + orders.length < totalCount;
+
+    const response = {
+      orders,
+      totalCount,
+      hasMore,
+      page,
+      limit,
+      ...(includeUserData && currentUser && { currentUser }),
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(

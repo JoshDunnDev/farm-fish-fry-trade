@@ -1,6 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import {
   Card,
@@ -14,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
+import { useSessionContext } from "@/contexts/SessionContext";
 
 export default function SetupPage() {
-  const { data: session, update } = useSession();
+  const { session, update } = useSessionContext();
   const router = useRouter();
   const [inGameName, setInGameName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -103,9 +103,7 @@ export default function SetupPage() {
               </AvatarFallback>
             </Avatar>
           </div>
-          <CardTitle className="text-2xl">
-            Welcome to FarmyFishFry!
-          </CardTitle>
+          <CardTitle className="text-2xl">Welcome to FarmyFishFry!</CardTitle>
           <CardDescription>
             Hi {session.user?.name}! To get started, please tell us your
             BitCraft character name.

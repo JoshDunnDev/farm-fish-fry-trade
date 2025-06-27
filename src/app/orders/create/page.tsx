@@ -1,7 +1,7 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useSessionContext } from "@/contexts/SessionContext";
 import {
   Card,
   CardContent,
@@ -20,22 +20,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
-
-interface PricingData {
-  lastUpdated: string;
-  version: string;
-  items: {
-    [itemName: string]: {
-      [tierKey: string]: number;
-    };
-  };
-  notes: {
-    [key: string]: string;
-  };
-}
+import { formatPrice } from "@/lib/pricing";
+import {
+  usePricing,
+  useAvailableItems,
+  useAvailableTiers,
+  useItemPrice,
+} from "@/hooks/usePricing";
 
 export default function CreateOrderPage() {
-  const { data: session, status } = useSession();
+  const { session, status } = useSessionContext();
   const router = useRouter();
   const [formData, setFormData] = useState({
     orderType: "BUY",
@@ -46,58 +40,87 @@ export default function CreateOrderPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [pricingData, setPricingData] = useState<PricingData | null>(null);
-  const [pricingLoading, setPricingLoading] = useState(true);
 
-  // Fetch pricing data on component mount
-  useEffect(() => {
-    async function fetchPricingData() {
-      try {
-        const response = await fetch("/api/pricing/data");
-        if (response.ok) {
-          const data = await response.json();
-          setPricingData(data);
-        } else {
-          console.error("Failed to fetch pricing data");
-        }
-      } catch (error) {
-        console.error("Error fetching pricing data:", error);
-      } finally {
-        setPricingLoading(false);
-      }
-    }
+  // Ref to prevent unnecessary price updates
+  const lastPriceUpdateRef = useRef<string>("");
 
-    fetchPricingData();
-  }, []);
+  // Use custom pricing hook
+  const {
+    pricingData,
+    loading: pricingLoading,
+    error: pricingError,
+  } = usePricing();
+
+  // Use pricing utility hooks
+  const availableItems = useAvailableItems(pricingData);
+  const availableTiers = useAvailableTiers(pricingData, formData.itemName);
+  const currentPrice = useItemPrice(
+    pricingData,
+    formData.itemName,
+    formData.tier
+  );
+
+  // Memoized order summary calculations
+  const orderSummary = useMemo(() => {
+    const pricePerUnit = parseFloat(formData.pricePerUnit) || 0;
+    const amount = parseInt(formData.amount) || 0;
+    const totalValue = Math.ceil(pricePerUnit * amount);
+
+    return {
+      pricePerUnit,
+      amount,
+      totalValue,
+      formattedPrice: pricePerUnit
+        ? formatPrice(pricePerUnit)
+        : "0.00 Hex Coin",
+      formattedTotal: totalValue ? `${totalValue} Hex Coin` : "0 Hex Coin",
+    };
+  }, [formData.pricePerUnit, formData.amount]);
 
   // Auto-populate price when item or tier changes
   useEffect(() => {
-    if (pricingData && formData.itemName && formData.tier) {
-      const item = pricingData.items[formData.itemName];
-      if (item) {
-        const tierKey = `tier${formData.tier}`;
-        const price = item[tierKey];
-        if (price !== undefined) {
-          setFormData((prev) => ({
-            ...prev,
-            pricePerUnit: price.toString(),
-          }));
-        } else {
-          // Clear price if tier not available for this item
-          setFormData((prev) => ({
-            ...prev,
-            pricePerUnit: "",
-          }));
-        }
-      }
+    const newPriceKey = `${formData.itemName}-${formData.tier}-${currentPrice}`;
+
+    // Only update if the price actually changed
+    if (lastPriceUpdateRef.current === newPriceKey) {
+      return;
     }
-  }, [pricingData, formData.itemName, formData.tier]);
+
+    if (currentPrice !== null) {
+      const newPrice = currentPrice.toString();
+      if (formData.pricePerUnit !== newPrice) {
+        setFormData((prev) => ({
+          ...prev,
+          pricePerUnit: newPrice,
+        }));
+        lastPriceUpdateRef.current = newPriceKey;
+      }
+    } else if (
+      pricingData &&
+      formData.itemName &&
+      formData.tier &&
+      formData.pricePerUnit !== ""
+    ) {
+      // Clear price if tier not available for this item
+      setFormData((prev) => ({
+        ...prev,
+        pricePerUnit: "",
+      }));
+      lastPriceUpdateRef.current = newPriceKey;
+    }
+  }, [
+    currentPrice,
+    pricingData,
+    formData.itemName,
+    formData.tier,
+    formData.pricePerUnit,
+  ]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
     }
-  }, [status, router]);
+  }, [status]);
 
   if (status === "loading" || pricingLoading) {
     return (
@@ -125,24 +148,6 @@ export default function CreateOrderPage() {
     return null;
   }
 
-  // Get available items from pricing data
-  const availableItems = pricingData
-    ? Object.keys(pricingData.items).sort()
-    : [];
-
-  // Get available tiers for selected item
-  const getAvailableTiersForItem = (itemName: string): number[] => {
-    if (!pricingData || !itemName) return [];
-    const item = pricingData.items[itemName];
-    if (!item) return [];
-
-    return Object.keys(item)
-      .map((key) => parseInt(key.replace("tier", "")))
-      .sort((a, b) => a - b);
-  };
-
-  const availableTiers = getAvailableTiersForItem(formData.itemName);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -155,16 +160,13 @@ export default function CreateOrderPage() {
       return;
     }
 
-    const pricePerUnit = parseFloat(formData.pricePerUnit);
-    const amount = parseInt(formData.amount);
-
-    if (isNaN(pricePerUnit) || pricePerUnit <= 0) {
+    if (isNaN(orderSummary.pricePerUnit) || orderSummary.pricePerUnit <= 0) {
       setError("Price per unit must be a positive number");
       setIsLoading(false);
       return;
     }
 
-    if (isNaN(amount) || amount <= 0) {
+    if (isNaN(orderSummary.amount) || orderSummary.amount <= 0) {
       setError("Amount must be a positive number");
       setIsLoading(false);
       return;
@@ -179,8 +181,8 @@ export default function CreateOrderPage() {
         body: JSON.stringify({
           itemName: formData.itemName.trim(),
           tier: parseInt(formData.tier.toString()),
-          pricePerUnit,
-          amount,
+          pricePerUnit: orderSummary.pricePerUnit,
+          amount: orderSummary.amount,
           orderType: formData.orderType,
         }),
       });
@@ -395,17 +397,10 @@ export default function CreateOrderPage() {
                   </p>
                   <p>
                     <span className="font-medium">Price per unit:</span>{" "}
-                    {formData.pricePerUnit
-                      ? `${formData.pricePerUnit} Hex Coin`
-                      : "0.00 Hex Coin"}
+                    {orderSummary.formattedPrice}
                   </p>
                   <p className="font-medium border-t pt-2">
-                    <span>Total Value:</span>{" "}
-                    {Math.ceil(
-                      (parseFloat(formData.pricePerUnit) || 0) *
-                        (parseInt(formData.amount) || 0)
-                    )}{" "}
-                    Hex Coin
+                    <span>Total Value:</span> {orderSummary.formattedTotal}
                   </p>
                 </div>
               </div>

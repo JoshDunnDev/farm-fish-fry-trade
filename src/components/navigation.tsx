@@ -1,14 +1,14 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AuthButton } from "@/components/auth-button";
+import { useSessionContext } from "@/contexts/SessionContext";
 
 const authPages = ["/auth/signin", "/setup"];
 
 export function Navigation() {
-  const { data: session, status } = useSession();
+  const { session, status } = useSessionContext();
   const pathname = usePathname();
 
   // Don't show navigation on auth pages

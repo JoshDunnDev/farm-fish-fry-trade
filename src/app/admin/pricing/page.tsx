@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,19 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-interface PricingData {
-  lastUpdated: string;
-  version: string;
-  items: {
-    [itemName: string]: {
-      [tierKey: string]: number;
-    };
-  };
-  notes: {
-    [key: string]: string;
-  };
-}
+import { usePricing } from "@/hooks/usePricing";
+import { useSessionContext } from "@/contexts/SessionContext";
+import { PricingData } from "@/lib/pricing";
 
 interface EditableItem {
   name: string;
@@ -34,59 +23,27 @@ interface EditableItem {
 }
 
 export default function AdminPricingPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
-  const [originalData, setOriginalData] = useState<PricingData | null>(null);
+
+  // Use optimized hooks
+  const { pricingData, loading: pricingLoading, clearCache } = usePricing();
+  const { isAdmin, adminLoading } = useSessionContext();
+
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const ALL_TIERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-  // Check admin status and load data
-  useEffect(() => {
-    async function checkAdminAndLoadData() {
-      if (status === "loading") return;
+  // Memoized loading state
+  const loading = useMemo(
+    () => pricingLoading || adminLoading,
+    [pricingLoading, adminLoading]
+  );
 
-      if (!session) {
-        router.push("/auth/signin");
-        return;
-      }
-
-      try {
-        // Check admin status
-        const adminResponse = await fetch("/api/admin/auth");
-        const adminData = await adminResponse.json();
-
-        if (!adminData.isAdmin) {
-          router.push("/admin");
-          return;
-        }
-
-        setIsAdmin(true);
-
-        // Load pricing data
-        const pricingResponse = await fetch("/api/pricing/data");
-        if (pricingResponse.ok) {
-          const pricingData = await pricingResponse.json();
-          setOriginalData(pricingData);
-          loadEditableData(pricingData);
-        }
-      } catch (error) {
-        console.error("Error loading admin data:", error);
-        setMessage("Error loading data");
-      }
-
-      setLoading(false);
-    }
-
-    checkAdminAndLoadData();
-  }, [session, status, router]);
-
-  const loadEditableData = (data: PricingData) => {
+  // Memoized editable data loader
+  const loadEditableData = useCallback((data: PricingData) => {
     const items: EditableItem[] = Object.entries(data.items)
       .map(([name, prices]) => ({
         name,
@@ -95,7 +52,16 @@ export default function AdminPricingPage() {
       }))
       .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
     setEditableItems(items);
-  };
+  }, []);
+
+  // Admin auth is now handled by useAdminAuth hook
+
+  // Load editable data when pricing data is available
+  useEffect(() => {
+    if (pricingData && isAdmin) {
+      loadEditableData(pricingData);
+    }
+  }, [pricingData, isAdmin, loadEditableData]);
 
   const updateItemPrice = (itemIndex: number, tier: string, value: string) => {
     const newPrice = parseFloat(value);
@@ -179,7 +145,7 @@ export default function AdminPricingPage() {
   };
 
   const saveAllChanges = async () => {
-    if (!originalData) return;
+    if (!pricingData) return;
 
     setSaving(true);
     try {
@@ -197,7 +163,7 @@ export default function AdminPricingPage() {
       });
 
       const updatedData = {
-        ...originalData,
+        ...pricingData,
         items: updatedItems,
         lastUpdated: new Date().toISOString().split("T")[0],
       };
@@ -211,8 +177,8 @@ export default function AdminPricingPage() {
       });
 
       if (response.ok) {
-        const result = await response.json();
-        setOriginalData(result.data);
+        // Clear cache to force refresh of pricing data
+        clearCache();
         // Mark all items as no longer new and sort alphabetically
         const sortedItems = editableItems
           .map((item) => ({ ...item, isNew: false }))
@@ -232,8 +198,8 @@ export default function AdminPricingPage() {
 
   const cancelChanges = () => {
     if (confirm("Are you sure you want to cancel all unsaved changes?")) {
-      if (originalData) {
-        loadEditableData(originalData);
+      if (pricingData) {
+        loadEditableData(pricingData);
         setHasUnsavedChanges(false);
         setMessage("Changes cancelled");
       }
@@ -325,9 +291,9 @@ export default function AdminPricingPage() {
         <p className="text-muted-foreground mt-2">
           Update prices for all items and tiers
         </p>
-        {originalData && (
+        {pricingData && (
           <p className="text-sm text-muted-foreground mt-1">
-            Last saved: {originalData.lastUpdated}
+            Last saved: {pricingData.lastUpdated}
           </p>
         )}
       </div>

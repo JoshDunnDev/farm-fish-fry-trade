@@ -1,7 +1,6 @@
 "use client";
 
-import { useSession, signIn, signOut } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { signIn, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -12,42 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSessionContext } from "@/contexts/SessionContext";
+import Link from "next/link";
 
 export function AuthButton() {
-  const { data: session, status } = useSession();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  // Check admin status when session is available
-  useEffect(() => {
-    async function checkAdminStatus() {
-      if (session?.user) {
-        try {
-          const response = await fetch("/api/admin/auth");
-          const data = await response.json();
-          setIsAdmin(data.isAdmin);
-        } catch (error) {
-          console.error("Error checking admin status:", error);
-        }
-      } else {
-        setIsAdmin(false);
-      }
-    }
-
-    if (status !== "loading") {
-      checkAdminStatus();
-    }
-
-    // Listen for admin status changes
-    const handleAdminStatusChange = () => {
-      checkAdminStatus();
-    };
-
-    window.addEventListener("adminStatusChanged", handleAdminStatusChange);
-
-    return () => {
-      window.removeEventListener("adminStatusChanged", handleAdminStatusChange);
-    };
-  }, [session, status]);
+  const { session, status, isAdmin } = useSessionContext();
 
   if (status === "loading") {
     return <Button disabled>Loading...</Button>;
@@ -85,13 +53,13 @@ export function AuthButton() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
-          <a href="/profile">Profile</a>
+          <Link href="/profile">Profile</Link>
         </DropdownMenuItem>
         {isAdmin && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <a href="/admin/pricing">Admin Panel</a>
+              <Link href="/admin/pricing">Admin Panel</Link>
             </DropdownMenuItem>
           </>
         )}

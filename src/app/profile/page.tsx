@@ -1,7 +1,5 @@
 "use client";
 
-import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -13,26 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useRouter } from "next/navigation";
+import { useProfile } from "@/hooks/useProfile";
+import { useSessionContext } from "@/contexts/SessionContext";
 
 export default function ProfilePage() {
-  const { data: session, update, status } = useSession();
-  const router = useRouter();
-  const [inGameName, setInGameName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-    }
-  }, [status, router]);
-
-  useEffect(() => {
-    if (session?.user?.inGameName) {
-      setInGameName(session.user.inGameName);
-    }
-  }, [session?.user?.inGameName]);
+  const { session, status } = useSessionContext();
+  const { inGameName, setInGameName, isLoading, message, updateProfile } =
+    useProfile();
 
   if (status === "loading") {
     return <div>Loading...</div>;
@@ -44,33 +29,7 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setMessage("");
-
-    try {
-      const response = await fetch("/api/user/update", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inGameName: inGameName.trim(),
-        }),
-      });
-
-      if (response.ok) {
-        // Update the session to reflect the new in-game name
-        await update();
-        setMessage("Profile updated successfully!");
-      } else {
-        const error = await response.text();
-        setMessage(`Error: ${error}`);
-      }
-    } catch (error: any) {
-      setMessage("Failed to update profile");
-    } finally {
-      setIsLoading(false);
-    }
+    await updateProfile(inGameName);
   };
 
   return (

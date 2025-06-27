@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useOrders } from "@/hooks/useOrders";
 import {
   Card,
   CardContent,
@@ -49,80 +49,103 @@ interface User {
   inGameName: string | null;
 }
 
+interface OrdersResponse {
+  orders: Order[];
+  totalCount: number;
+  hasMore: boolean;
+  page: number;
+  limit: number;
+  currentUser?: User;
+}
+
 export default function OrdersPage() {
-  const { data: session, status } = useSession();
   const router = useRouter();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [myOrders, setMyOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // Use the optimized orders hook (includes session management)
+  const {
+    orders: allOrders,
+    loading,
+    currentUser,
+    hasMore,
+    totalCount,
+    session,
+    status,
+    loadMore,
+    updateOrder,
+    removeOrder,
+  } = useOrders();
+
   const [activeTab, setActiveTab] = useState<"all" | "my">("all");
   const [filters, setFilters] = useState({
     orderType: "ALL",
     status: "ALL",
   });
 
+  // Memoized filtered orders
+  const { filteredOrders, myOrders } = useMemo(() => {
+    const myOrdersList = currentUser
+      ? allOrders.filter(
+          (order) =>
+            order.creator.id === currentUser.id ||
+            order.claimer?.id === currentUser.id
+        )
+      : [];
+
+    const sourceOrders = activeTab === "all" ? allOrders : myOrdersList;
+
+    const filtered = sourceOrders.filter((order) => {
+      // On "All" tab, exclude fulfilled orders
+      if (activeTab === "all" && order.status === "FULFILLED") {
+        return false;
+      }
+
+      if (
+        filters.orderType !== "ALL" &&
+        order.orderType !== filters.orderType
+      ) {
+        return false;
+      }
+      if (filters.status !== "ALL" && order.status !== filters.status) {
+        return false;
+      }
+      return true;
+    });
+
+    return { filteredOrders: filtered, myOrders: myOrdersList };
+  }, [allOrders, currentUser, activeTab, filters]);
+
+  // Memoized order counts
+  const counts = useMemo(() => {
+    const countsSource =
+      activeTab === "all"
+        ? allOrders.filter((order) => order.status !== "FULFILLED")
+        : myOrders;
+
+    return {
+      open: countsSource.filter((order) => order.status === "OPEN").length,
+      inProgress: countsSource.filter((order) => order.status === "IN_PROGRESS")
+        .length,
+      readyToTrade: countsSource.filter(
+        (order) => order.status === "READY_TO_TRADE"
+      ).length,
+      fulfilled: countsSource.filter((order) => order.status === "FULFILLED")
+        .length,
+      buy: countsSource.filter((order) => order.orderType === "BUY").length,
+      sell: countsSource.filter((order) => order.orderType === "SELL").length,
+    };
+  }, [allOrders, myOrders, activeTab]);
+
+  // Redirect to auth if not authenticated
   useEffect(() => {
     if (status === "loading") return;
-
     if (!session) {
       router.push("/auth/signin");
-      return;
     }
-
-    fetchCurrentUser();
-    fetchOrders();
   }, [session, status, router]);
-
-  const fetchCurrentUser = async () => {
-    try {
-      const response = await fetch("/api/user");
-      if (response.ok) {
-        const userData = await response.json();
-        setCurrentUser(userData);
-      }
-    } catch (error) {
-      console.error("Error fetching current user:", error);
-    }
-  };
-
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch all orders
-      const allOrdersResponse = await fetch("/api/orders");
-      if (allOrdersResponse.ok) {
-        const allOrdersData = await allOrdersResponse.json();
-        setOrders(allOrdersData);
-      }
-
-      // Fetch user's orders if we have session
-      if (session?.user?.id) {
-        const myOrdersResponse = await fetch(
-          `/api/orders?userId=${session.user.id}`
-        );
-        if (myOrdersResponse.ok) {
-          const myOrdersData = await myOrdersResponse.json();
-          setMyOrders(myOrdersData);
-        }
-      }
-    } catch (error) {
-      console.error("Error fetching orders:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleClaimOrder = async (orderId: string) => {
     // Optimistic update - immediately update the UI
-    const updateOrder = (order: Order) =>
-      order.id === orderId
-        ? { ...order, status: "IN_PROGRESS", claimer: currentUser }
-        : order;
-
-    setOrders((prevOrders) => prevOrders.map(updateOrder));
-    setMyOrders((prevOrders) => prevOrders.map(updateOrder));
+    updateOrder(orderId, { status: "IN_PROGRESS", claimer: currentUser });
 
     try {
       const response = await fetch(`/api/orders/${orderId}/claim`, {
@@ -131,25 +154,13 @@ export default function OrdersPage() {
 
       if (!response.ok) {
         // Revert the optimistic update on error
-        const revertOrder = (order: Order) =>
-          order.id === orderId
-            ? { ...order, status: "OPEN", claimer: null }
-            : order;
-
-        setOrders((prevOrders) => prevOrders.map(revertOrder));
-        setMyOrders((prevOrders) => prevOrders.map(revertOrder));
+        updateOrder(orderId, { status: "OPEN", claimer: null });
         const error = await response.json();
         alert(error.error || "Failed to claim order");
       }
     } catch (error) {
       // Revert the optimistic update on error
-      const revertOrder = (order: Order) =>
-        order.id === orderId
-          ? { ...order, status: "OPEN", claimer: null }
-          : order;
-
-      setOrders((prevOrders) => prevOrders.map(revertOrder));
-      setMyOrders((prevOrders) => prevOrders.map(revertOrder));
+      updateOrder(orderId, { status: "OPEN", claimer: null });
       console.error("Error claiming order:", error);
       alert("Failed to claim order");
     }
@@ -157,17 +168,10 @@ export default function OrdersPage() {
 
   const handleCompleteOrder = async (orderId: string) => {
     // Optimistic update - immediately update the UI
-    const updateOrder = (order: Order) =>
-      order.id === orderId
-        ? {
-            ...order,
-            status: "FULFILLED",
-            fulfilledAt: new Date().toISOString(),
-          }
-        : order;
-
-    setOrders((prevOrders) => prevOrders.map(updateOrder));
-    setMyOrders((prevOrders) => prevOrders.map(updateOrder));
+    updateOrder(orderId, {
+      status: "FULFILLED",
+      fulfilledAt: new Date().toISOString(),
+    });
 
     try {
       const response = await fetch(`/api/orders/${orderId}/complete`, {
@@ -176,25 +180,19 @@ export default function OrdersPage() {
 
       if (!response.ok) {
         // Revert the optimistic update on error
-        const revertOrder = (order: Order) =>
-          order.id === orderId
-            ? { ...order, status: "READY_TO_TRADE", fulfilledAt: undefined }
-            : order;
-
-        setOrders((prevOrders) => prevOrders.map(revertOrder));
-        setMyOrders((prevOrders) => prevOrders.map(revertOrder));
+        updateOrder(orderId, {
+          status: "READY_TO_TRADE",
+          fulfilledAt: undefined,
+        });
         const error = await response.json();
         alert(error.error || "Failed to complete order");
       }
     } catch (error) {
       // Revert the optimistic update on error
-      const revertOrder = (order: Order) =>
-        order.id === orderId
-          ? { ...order, status: "READY_TO_TRADE", fulfilledAt: undefined }
-          : order;
-
-      setOrders((prevOrders) => prevOrders.map(revertOrder));
-      setMyOrders((prevOrders) => prevOrders.map(revertOrder));
+      updateOrder(orderId, {
+        status: "READY_TO_TRADE",
+        fulfilledAt: undefined,
+      });
       console.error("Error completing order:", error);
       alert("Failed to complete order");
     }
@@ -202,11 +200,7 @@ export default function OrdersPage() {
 
   const handleMarkReady = async (orderId: string) => {
     // Optimistic update - immediately update the UI
-    const updateOrder = (order: Order) =>
-      order.id === orderId ? { ...order, status: "READY_TO_TRADE" } : order;
-
-    setOrders((prevOrders) => prevOrders.map(updateOrder));
-    setMyOrders((prevOrders) => prevOrders.map(updateOrder));
+    updateOrder(orderId, { status: "READY_TO_TRADE" });
 
     try {
       const response = await fetch(`/api/orders/${orderId}/ready`, {
@@ -215,21 +209,13 @@ export default function OrdersPage() {
 
       if (!response.ok) {
         // Revert the optimistic update on error
-        const revertOrder = (order: Order) =>
-          order.id === orderId ? { ...order, status: "IN_PROGRESS" } : order;
-
-        setOrders((prevOrders) => prevOrders.map(revertOrder));
-        setMyOrders((prevOrders) => prevOrders.map(revertOrder));
+        updateOrder(orderId, { status: "IN_PROGRESS" });
         const error = await response.json();
         alert(error.error || "Failed to mark order as ready");
       }
     } catch (error) {
       // Revert the optimistic update on error
-      const revertOrder = (order: Order) =>
-        order.id === orderId ? { ...order, status: "IN_PROGRESS" } : order;
-
-      setOrders((prevOrders) => prevOrders.map(revertOrder));
-      setMyOrders((prevOrders) => prevOrders.map(revertOrder));
+      updateOrder(orderId, { status: "IN_PROGRESS" });
       console.error("Error marking order as ready:", error);
       alert("Failed to mark order as ready");
     }
@@ -241,16 +227,10 @@ export default function OrdersPage() {
     }
 
     // Store the order for potential restoration
-    const orderToDelete = orders.find((order) => order.id === orderId);
-    const myOrderToDelete = myOrders.find((order) => order.id === orderId);
+    const orderToDelete = allOrders.find((order) => order.id === orderId);
 
     // Optimistic update - immediately remove from UI
-    setOrders((prevOrders) =>
-      prevOrders.filter((order) => order.id !== orderId)
-    );
-    setMyOrders((prevOrders) =>
-      prevOrders.filter((order) => order.id !== orderId)
-    );
+    removeOrder(orderId);
 
     try {
       const response = await fetch(`/api/orders?id=${orderId}`, {
@@ -258,48 +238,18 @@ export default function OrdersPage() {
       });
 
       if (!response.ok) {
-        // Revert the optimistic update on error - restore the order
-        if (orderToDelete) {
-          setOrders((prevOrders) =>
-            [...prevOrders, orderToDelete].sort(
-              (a, b) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime()
-            )
-          );
-        }
-        if (myOrderToDelete) {
-          setMyOrders((prevOrders) =>
-            [...prevOrders, myOrderToDelete].sort(
-              (a, b) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime()
-            )
-          );
-        }
+        // Note: We can't easily restore the order with the current hook structure
+        // In a real app, you might want to implement an "undo" mechanism
         const error = await response.json();
         alert(error.error || "Failed to delete order");
+        // For now, we'll just refetch the data to restore the order
+        window.location.reload();
       }
     } catch (error) {
-      // Revert the optimistic update on error - restore the order
-      if (orderToDelete) {
-        setOrders((prevOrders) =>
-          [...prevOrders, orderToDelete].sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )
-        );
-      }
-      if (myOrderToDelete) {
-        setMyOrders((prevOrders) =>
-          [...prevOrders, myOrderToDelete].sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          )
-        );
-      }
       console.error("Error deleting order:", error);
       alert("Failed to delete order");
+      // For now, we'll just refetch the data to restore the order
+      window.location.reload();
     }
   };
 
@@ -346,48 +296,6 @@ export default function OrdersPage() {
   if (!session) {
     return null;
   }
-
-  const filteredOrders = (activeTab === "all" ? orders : myOrders).filter(
-    (order) => {
-      // On "All" tab, exclude fulfilled orders
-      if (activeTab === "all" && order.status === "FULFILLED") {
-        return false;
-      }
-
-      if (
-        filters.orderType !== "ALL" &&
-        order.orderType !== filters.orderType
-      ) {
-        return false;
-      }
-      if (filters.status !== "ALL" && order.status !== filters.status) {
-        return false;
-      }
-      return true;
-    }
-  );
-
-  const getOrderCounts = (orderList: Order[]) => {
-    return {
-      open: orderList.filter((order) => order.status === "OPEN").length,
-      inProgress: orderList.filter((order) => order.status === "IN_PROGRESS")
-        .length,
-      readyToTrade: orderList.filter(
-        (order) => order.status === "READY_TO_TRADE"
-      ).length,
-      fulfilled: orderList.filter((order) => order.status === "FULFILLED")
-        .length,
-      buy: orderList.filter((order) => order.orderType === "BUY").length,
-      sell: orderList.filter((order) => order.orderType === "SELL").length,
-    };
-  };
-
-  // Get counts based on what's actually shown (excluding fulfilled on "all" tab)
-  const countsSource =
-    activeTab === "all"
-      ? orders.filter((order) => order.status !== "FULFILLED")
-      : myOrders;
-  const counts = getOrderCounts(countsSource);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -521,7 +429,7 @@ export default function OrdersPage() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            All ({orders.length})
+            All ({allOrders.length})
           </button>
           <button
             onClick={() => setActiveTab("my")}
@@ -606,157 +514,187 @@ export default function OrdersPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm table-fixed">
-                <colgroup>
-                  <col className="w-48" />
-                  <col className="w-20" />
-                  <col className="w-24" />
-                  <col className="w-24" />
-                  <col className="w-28" />
-                  <col className="w-28" />
-                  <col className="w-32" />
-                  <col className="w-32" />
-                  <col className="w-28" />
-                </colgroup>
-                <thead className="border-b bg-muted/50">
-                  <tr>
-                    <th className="text-left px-3 py-2 font-medium">
-                      Item & Date
-                    </th>
-                    <th className="text-left px-2 py-2 font-medium">Type</th>
-                    <th className="text-left px-2 py-2 font-medium">Status</th>
-                    <th className="text-left px-2 py-2 font-medium">Amount</th>
-                    <th className="text-left px-2 py-2 font-medium">
-                      Price/Unit
-                    </th>
-                    <th className="text-left px-2 py-2 font-medium">Total</th>
-                    <th className="text-left px-2 py-2 font-medium">Creator</th>
-                    <th className="text-left px-2 py-2 font-medium">Claimer</th>
-                    <th className="text-left px-3 py-2 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOrders.map((order, index) => (
-                    <tr
-                      key={order.id}
-                      className={`border-b hover:bg-muted/30 ${
-                        index % 2 === 0 ? "bg-background" : "bg-muted/10"
-                      }`}
-                    >
-                      <td className="px-3 py-2">
-                        <div className="font-medium truncate">
-                          T{order.tier}{" "}
-                          {order.itemName.charAt(0).toUpperCase() +
-                            order.itemName.slice(1).toLowerCase()}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {formatDateTime(order.createdAt)}
-                        </div>
-                      </td>
-                      <td className="px-2 py-2 text-left">
-                        {order.orderType === "BUY" ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/20 text-primary border border-primary/30">
-                            Buy
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                            Sell
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-2 py-2 text-left">
-                        {order.status === "OPEN" && (
-                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
-                            Open
-                          </span>
-                        )}
-                        {order.status === "IN_PROGRESS" && (
-                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
-                            In Progress
-                          </span>
-                        )}
-                        {order.status === "READY_TO_TRADE" && (
-                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-primary/20 text-primary border border-primary/30">
-                            Ready
-                          </span>
-                        )}
-                        {order.status === "FULFILLED" && (
-                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground border border-border">
-                            Fulfilled
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-2 py-2 text-left font-mono">
-                        {order.amount.toLocaleString()}
-                      </td>
-                      <td className="px-2 py-2 text-left font-mono">
-                        {formatPrice(order.pricePerUnit)}
-                      </td>
-                      <td className="px-2 py-2 text-left font-mono font-medium">
-                        {formatPrice(
-                          Math.ceil(order.amount * order.pricePerUnit)
-                        )}
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="text-sm truncate">
-                          {order.creator.inGameName ||
-                            order.creator.discordName}
-                        </div>
-                      </td>
-                      <td className="px-2 py-2">
-                        <div className="text-sm truncate">
-                          {order.claimer
-                            ? order.claimer.inGameName ||
-                              order.claimer.discordName
-                            : "-"}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex gap-1 justify-start">
-                          {canClaimOrder(order) && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleClaimOrder(order.id)}
-                              className="h-6 w-20 text-xs px-2 py-1 bg-primary/80 hover:bg-primary text-primary-foreground"
-                            >
-                              Claim
-                            </Button>
-                          )}
-                          {canMarkReady(order) && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleMarkReady(order.id)}
-                              className="h-6 w-20 text-xs px-2 py-1 bg-yellow-500/80 hover:bg-yellow-500 text-black"
-                            >
-                              Ready
-                            </Button>
-                          )}
-                          {canCompleteOrder(order) && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleCompleteOrder(order.id)}
-                              className="h-6 w-20 text-xs px-2 py-1 bg-green-500/80 hover:bg-green-500 text-black"
-                            >
-                              Complete
-                            </Button>
-                          )}
-                          {canDeleteOrder(order) && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleDeleteOrder(order.id)}
-                              className="h-6 w-20 text-xs px-2 py-1 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
-                            >
-                              Delete
-                            </Button>
-                          )}
-                        </div>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm table-fixed">
+                  <colgroup>
+                    <col className="w-48" />
+                    <col className="w-20" />
+                    <col className="w-24" />
+                    <col className="w-24" />
+                    <col className="w-28" />
+                    <col className="w-28" />
+                    <col className="w-32" />
+                    <col className="w-32" />
+                    <col className="w-28" />
+                  </colgroup>
+                  <thead className="border-b bg-muted/50">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">
+                        Item & Date
+                      </th>
+                      <th className="text-left px-2 py-2 font-medium">Type</th>
+                      <th className="text-left px-2 py-2 font-medium">
+                        Status
+                      </th>
+                      <th className="text-left px-2 py-2 font-medium">
+                        Amount
+                      </th>
+                      <th className="text-left px-2 py-2 font-medium">
+                        Price/Unit
+                      </th>
+                      <th className="text-left px-2 py-2 font-medium">Total</th>
+                      <th className="text-left px-2 py-2 font-medium">
+                        Creator
+                      </th>
+                      <th className="text-left px-2 py-2 font-medium">
+                        Claimer
+                      </th>
+                      <th className="text-left px-3 py-2 font-medium">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredOrders.map((order, index) => (
+                      <tr
+                        key={order.id}
+                        className={`border-b hover:bg-muted/30 ${
+                          index % 2 === 0 ? "bg-background" : "bg-muted/10"
+                        }`}
+                      >
+                        <td className="px-3 py-2">
+                          <div className="font-medium truncate">
+                            T{order.tier}{" "}
+                            {order.itemName.charAt(0).toUpperCase() +
+                              order.itemName.slice(1).toLowerCase()}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {formatDateTime(order.createdAt)}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-left">
+                          {order.orderType === "BUY" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/20 text-primary border border-primary/30">
+                              Buy
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                              Sell
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2 text-left">
+                          {order.status === "OPEN" && (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                              Open
+                            </span>
+                          )}
+                          {order.status === "IN_PROGRESS" && (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                              In Progress
+                            </span>
+                          )}
+                          {order.status === "READY_TO_TRADE" && (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-primary/20 text-primary border border-primary/30">
+                              Ready
+                            </span>
+                          )}
+                          {order.status === "FULFILLED" && (
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground border border-border">
+                              Fulfilled
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2 text-left font-mono">
+                          {order.amount.toLocaleString()}
+                        </td>
+                        <td className="px-2 py-2 text-left font-mono">
+                          {formatPrice(order.pricePerUnit)}
+                        </td>
+                        <td className="px-2 py-2 text-left font-mono font-medium">
+                          {formatPrice(
+                            Math.ceil(order.amount * order.pricePerUnit)
+                          )}
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="text-sm truncate">
+                            {order.creator.inGameName ||
+                              order.creator.discordName}
+                          </div>
+                        </td>
+                        <td className="px-2 py-2">
+                          <div className="text-sm truncate">
+                            {order.claimer
+                              ? order.claimer.inGameName ||
+                                order.claimer.discordName
+                              : "-"}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-1 justify-start">
+                            {canClaimOrder(order) && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleClaimOrder(order.id)}
+                                className="h-6 w-20 text-xs px-2 py-1 bg-primary/80 hover:bg-primary text-primary-foreground"
+                              >
+                                Claim
+                              </Button>
+                            )}
+                            {canMarkReady(order) && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleMarkReady(order.id)}
+                                className="h-6 w-20 text-xs px-2 py-1 bg-yellow-500/80 hover:bg-yellow-500 text-black"
+                              >
+                                Ready
+                              </Button>
+                            )}
+                            {canCompleteOrder(order) && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleCompleteOrder(order.id)}
+                                className="h-6 w-20 text-xs px-2 py-1 bg-green-500/80 hover:bg-green-500 text-black"
+                              >
+                                Complete
+                              </Button>
+                            )}
+                            {canDeleteOrder(order) && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleDeleteOrder(order.id)}
+                                className="h-6 w-20 text-xs px-2 py-1 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
+                              >
+                                Delete
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Load More Button */}
+              {hasMore && activeTab === "all" && (
+                <div className="flex justify-center py-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={loadMore}
+                    disabled={loading}
+                    className="min-w-32"
+                  >
+                    {loading
+                      ? "Loading..."
+                      : `Load More (${
+                          totalCount - allOrders.length
+                        } remaining)`}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
