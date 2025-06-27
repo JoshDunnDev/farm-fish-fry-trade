@@ -23,8 +23,7 @@ interface PricingData {
 
 interface EditableItem {
   name: string;
-  prices: { [tierKey: string]: number };
-  isNew?: boolean;
+  prices: { [tierKey: string]: number | null };
 }
 
 export default function AdminPricingPage() {
@@ -95,7 +94,8 @@ export default function AdminPricingPage() {
     setEditableItems(prev => {
       const updated = [...prev];
       if (value === '') {
-        delete updated[itemIndex].prices[tier];
+        // Keep the tier but set it to null to indicate empty value
+        updated[itemIndex].prices[tier] = null;
       } else {
         updated[itemIndex].prices[tier] = newPrice;
       }
@@ -122,10 +122,9 @@ export default function AdminPricingPage() {
         tier3: 1.0,
         tier4: 1.0,
       },
-      isNew: true,
     };
 
-    setEditableItems(prev => [...prev, newItem]);
+    setEditableItems(prev => [newItem, ...prev]);
     setHasUnsavedChanges(true);
     setMessage(`Added new item: ${itemName} (remember to save)`);
   };
@@ -168,7 +167,14 @@ export default function AdminPricingPage() {
       // Convert editableItems back to the API format
       const updatedItems: { [key: string]: { [key: string]: number } } = {};
       editableItems.forEach(item => {
-        updatedItems[item.name] = item.prices;
+        // Filter out null values (empty inputs) when saving
+        const validPrices: { [key: string]: number } = {};
+        Object.entries(item.prices).forEach(([tierKey, price]) => {
+          if (price !== null && price !== undefined && !isNaN(price)) {
+            validPrices[tierKey] = price;
+          }
+        });
+        updatedItems[item.name] = validPrices;
       });
 
       const updatedData = {
@@ -188,7 +194,7 @@ export default function AdminPricingPage() {
       if (response.ok) {
         const result = await response.json();
         setOriginalData(result.data);
-        setEditableItems(prev => prev.map(item => ({ ...item, isNew: false })));
+        setEditableItems(prev => [...prev]);
         setHasUnsavedChanges(false);
         setMessage('All changes saved successfully!');
       } else {
@@ -310,7 +316,7 @@ export default function AdminPricingPage() {
               <Button variant="outline" onClick={cancelChanges} disabled={saving}>
                 Cancel Changes
               </Button>
-              <Button onClick={saveAllChanges} disabled={saving}>
+              <Button onClick={saveAllChanges} disabled={saving} className="bg-green-600 hover:bg-green-700">
                 {saving ? 'Saving...' : 'Save All Changes'}
               </Button>
             </div>
@@ -346,12 +352,11 @@ export default function AdminPricingPage() {
             const availableNewTiers = getAvailableNewTiers(item);
             
             return (
-              <Card key={`${item.name}-${itemIndex}`} className={item.isNew ? 'border-green-300 bg-green-50' : ''}>
+              <Card key={`${item.name}-${itemIndex}`}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="capitalize flex items-center space-x-2">
-                      <span>{item.name}</span>
-                      {item.isNew && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">NEW</span>}
+                    <CardTitle className="capitalize">
+                      {item.name}
                     </CardTitle>
                     <Button
                       variant="destructive"
@@ -432,7 +437,7 @@ export default function AdminPricingPage() {
       {/* Save Button at Bottom */}
       {hasUnsavedChanges && (
         <div className="mt-8 flex justify-center">
-          <Button onClick={saveAllChanges} disabled={saving} size="lg" className="px-8">
+          <Button onClick={saveAllChanges} disabled={saving} size="lg" className="px-8 bg-green-600 hover:bg-green-700">
             {saving ? 'Saving Changes...' : 'Save All Changes'}
           </Button>
         </div>
@@ -444,7 +449,7 @@ export default function AdminPricingPage() {
           <li>• Make changes to prices and click "Save All Changes" to apply them</li>
           <li>• Changes are only saved when you click the save button</li>
           <li>• You can add/remove tiers for each item (game supports tiers 1-10)</li>
-          <li>• Users will see new prices within 30 seconds after saving</li>
+          <li>• Users will see new prices immediately after saving</li>
           <li>• Click "Cancel Changes" to revert all unsaved modifications</li>
         </ul>
       </div>

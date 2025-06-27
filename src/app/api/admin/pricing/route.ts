@@ -30,9 +30,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // Fetch pricing data from database
+    // Fetch pricing data from database ordered by creation time (newest first), then by tier
     const pricingEntries = await prisma.pricing.findMany({
       orderBy: [
+        { createdAt: 'desc' },
         { itemName: 'asc' },
         { tier: 'asc' }
       ]
@@ -121,29 +122,61 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Use a transaction to update all data atomically
+    // Use a transaction to update pricing data while preserving creation order
     await prisma.$transaction(async (tx) => {
-      // Clear existing pricing data
-      await tx.pricing.deleteMany();
+      // Get existing pricing data to determine what's new vs updated
+      const existingPricing = await tx.pricing.findMany();
+      const existingKeys = new Set(existingPricing.map(p => `${p.itemName}-${p.tier}`));
       
-      // Insert new pricing data
-      const pricingEntries = [];
+      // First, delete items that are no longer present
+      const newKeys = new Set();
       for (const [itemName, prices] of Object.entries(items)) {
-        for (const [tierKey, price] of Object.entries(prices as { [key: string]: number })) {
+        for (const tierKey of Object.keys(prices as { [key: string]: number })) {
           const tier = parseInt(tierKey.replace('tier', ''));
-          pricingEntries.push({
-            itemName,
-            tier,
-            price,
-            createdBy: adminUser.id,
+          newKeys.add(`${itemName}-${tier}`);
+        }
+      }
+      
+      // Delete pricing entries that are no longer present
+      for (const existing of existingPricing) {
+        const key = `${existing.itemName}-${existing.tier}`;
+        if (!newKeys.has(key)) {
+          await tx.pricing.delete({
+            where: { id: existing.id }
           });
         }
       }
-
-      if (pricingEntries.length > 0) {
-        await tx.pricing.createMany({
-          data: pricingEntries,
-        });
+      
+      // Update existing items and create new ones
+      for (const [itemName, prices] of Object.entries(items)) {
+        for (const [tierKey, price] of Object.entries(prices as { [key: string]: number })) {
+          const tier = parseInt(tierKey.replace('tier', ''));
+          const key = `${itemName}-${tier}`;
+          
+          if (existingKeys.has(key)) {
+            // Update existing pricing
+            await tx.pricing.updateMany({
+              where: {
+                itemName: itemName,
+                tier: tier
+              },
+              data: {
+                price: price,
+                updatedAt: new Date()
+              }
+            });
+          } else {
+            // Create new pricing (will get new createdAt timestamp)
+            await tx.pricing.create({
+              data: {
+                itemName,
+                tier,
+                price,
+                createdBy: adminUser.id,
+              }
+            });
+          }
+        }
       }
 
       // Update metadata
@@ -172,6 +205,7 @@ export async function POST(request: NextRequest) {
     // Fetch the updated data to return
     const updatedPricingEntries = await prisma.pricing.findMany({
       orderBy: [
+        { createdAt: 'desc' },
         { itemName: 'asc' },
         { tier: 'asc' }
       ]

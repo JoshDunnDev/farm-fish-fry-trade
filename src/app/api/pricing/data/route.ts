@@ -3,9 +3,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    // Fetch pricing data from database
+    // Fetch pricing data from database ordered by creation time (newest first), then by tier
     const pricingEntries = await prisma.pricing.findMany({
       orderBy: [
+        { createdAt: 'desc' },
         { itemName: 'asc' },
         { tier: 'asc' }
       ]

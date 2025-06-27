@@ -55,6 +55,8 @@ RUN useradd --system --uid 1001 --gid nodejs nextjs
 # Copy production dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/package.json ./package.json
 
 # Generate Prisma client in production
 RUN npx prisma generate
