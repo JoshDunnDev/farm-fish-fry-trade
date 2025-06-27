@@ -14,7 +14,7 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+      # Note: init-db.sh is not needed as the app handles DB initialization
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-farmfishfrytrade}"]
       interval: 10s
@@ -26,17 +26,11 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  # Next.js Application
+  # Next.js Application - Built from Git repository
   app:
-    # Option 1: Build from Git repository (for Portainer Git deployments)
-    # Uncomment this section and comment out the build section below
-    # image: your-registry/farmfishfrytrade:latest
-    
-    # Option 2: Build from local context (for local development/deployment)
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
-    
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:3000"
@@ -56,6 +50,9 @@ services:
       - NODE_ENV=production
       - PORT=3000
       
+      # Optional: Seed database on first run (set to true only for development/testing)
+      - SEED_DATABASE=${SEED_DATABASE:-false}
+      
     depends_on:
       db:
         condition: service_healthy
@@ -69,11 +66,6 @@ services:
       - app-network
     security_opt:
       - no-new-privileges:true
-    # Remove development volumes for production
-    # volumes:
-    #   - .:/app
-    #   - /app/node_modules
-    #   - /app/.next
 
 volumes:
   postgres_data:
@@ -81,4 +73,4 @@ volumes:
 
 networks:
   app-network:
-    driver: bridge
+    driver: bridge 

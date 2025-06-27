@@ -47,11 +47,31 @@ SEED_DATABASE=true
 
 ### 3. Deploy with Portainer
 
+#### Option A: Git Repository Deployment (Recommended)
+
 1. In Portainer, go to **Stacks**
 2. Click **Add stack**
 3. Name your stack (e.g., `farmfishfrytrade`)
-4. Choose **Upload** and upload your `docker-compose.yml` file
-5. In the **Environment variables** section, add your variables from the `.env` file above
+4. Choose **Repository** as the build method
+5. Enter your Git repository URL: `https://github.com/yourusername/farm-fish-fry-trade`
+6. Set **Compose path** to: `docker-compose.portainer.yml`
+7. In the **Environment variables** section, add your variables:
+   ```
+   POSTGRES_PASSWORD=your-secure-password
+   NEXTAUTH_URL=http://your-domain.com
+   NEXTAUTH_SECRET=your-super-secret-key-minimum-32-characters
+   DISCORD_CLIENT_ID=your_discord_client_id
+   DISCORD_CLIENT_SECRET=your_discord_client_secret
+   ```
+8. Click **Deploy the stack**
+
+#### Option B: Upload Docker Compose File
+
+1. In Portainer, go to **Stacks**
+2. Click **Add stack**
+3. Name your stack (e.g., `farmfishfrytrade`)
+4. Choose **Upload** and upload the `docker-compose.portainer.yml` file
+5. In the **Environment variables** section, add your variables from above
 6. Click **Deploy the stack**
 
 ### 4. Access Your Application
@@ -104,16 +124,24 @@ server {
 
 ## Updating the Application
 
-To update to a new version:
+### If you deployed via Git Repository (Option A):
 
-1. In Portainer, go to your stack
-2. Click **Editor**
-3. Update the image tag or rebuild
-4. Click **Update the stack**
-5. The application will automatically:
-   - Pull the new image
+1. Push your code changes to your Git repository
+2. In Portainer, go to your stack
+3. Click **Re-pull and redeploy**
+4. The application will automatically:
+   - Pull the latest code from Git
+   - Rebuild the Docker image
    - Run database migrations
    - Restart with zero downtime
+
+### If you deployed via Upload (Option B):
+
+1. Upload the updated `docker-compose.portainer.yml` file
+2. In Portainer, go to your stack
+3. Click **Editor**
+4. Update the stack configuration
+5. Click **Update the stack**
 
 ## Backup and Restore
 
