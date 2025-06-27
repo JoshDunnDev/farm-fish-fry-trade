@@ -26,17 +26,11 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  # Next.js Application
+  # Next.js Application (Local Development)
   app:
-    # Option 1: Build from Git repository (for Portainer Git deployments)
-    # Uncomment this section and comment out the build section below
-    # image: your-registry/farmfishfrytrade:latest
-    
-    # Option 2: Build from local context (for local development/deployment)
     build: 
       context: .
       dockerfile: Dockerfile
-    
     restart: unless-stopped
     ports:
       - "${APP_PORT}:3000"
@@ -55,6 +49,9 @@ services:
       # Application settings
       - NODE_ENV=production
       - PORT=3000
+      
+      # Optional: Seed database on first run
+      - SEED_DATABASE=${SEED_DATABASE}
       
     depends_on:
       db:

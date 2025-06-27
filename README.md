@@ -56,13 +56,16 @@ cp env.example .env.local
 
 ### 4. Start the Application
 
-#### Production Deployment (Recommended)
+#### Production Deployment
 
 ```bash
 # Test the deployment locally
 ./deploy.sh
 
-# For production deployment with Portainer, see DEPLOYMENT.md
+# For production deployment with Portainer:
+# 1. Use docker-compose.production.yml
+# 2. Update the GitHub URL in the file
+# 3. Follow DEPLOYMENT.md for complete instructions
 ```
 
 #### Development Mode
@@ -88,9 +91,9 @@ npm run dev            # Start development server
 For production deployment with Portainer or Docker Compose, see **[DEPLOYMENT.md](DEPLOYMENT.md)** for detailed instructions.
 
 **Quick deployment:**
-1. Copy `env.example` to `.env` and configure your settings
+1. Edit `docker-compose.production.yml` with your GitHub repository URL
 2. Set up Discord OAuth with your production URL
-3. Deploy using Docker Compose or import into Portainer
+3. Deploy to Portainer with environment variables
 
 ## Project Structure
 
