@@ -355,17 +355,17 @@ export default function AdminPricingPage() {
       </div>
 
       {editableItems.length > 0 && (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* New Items Section */}
           {editableItems.some(item => item.isNew) && (
             <div>
-              <div className="mb-4 flex items-center space-x-2">
-                <h2 className="text-xl font-semibold">New Items</h2>
+              <div className="mb-3 flex items-center space-x-2">
+                <h2 className="text-lg font-semibold">New Items</h2>
                 <span className="text-sm text-muted-foreground">
                   ({editableItems.filter(item => item.isNew).length} item{editableItems.filter(item => item.isNew).length !== 1 ? 's' : ''})
                 </span>
               </div>
-              <div className="grid gap-4 mb-6">
+              <div className="grid gap-4 mb-4">
                 {editableItems
                   .filter(item => item.isNew)
                   .map((item, itemIndex) => {
@@ -375,9 +375,9 @@ export default function AdminPricingPage() {
                     
                     return (
                       <Card key={`new-${item.name}-${actualIndex}`}>
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="capitalize">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <CardTitle className="capitalize text-lg">
                               {item.name} <span className="text-sm font-normal text-muted-foreground">(New)</span>
                             </CardTitle>
                             <Button
@@ -388,18 +388,18 @@ export default function AdminPricingPage() {
                               Remove Item
                             </Button>
                           </div>
-                          <CardDescription>
+                          <CardDescription className="text-xs">
                             {itemTiers.length} tier{itemTiers.length !== 1 ? 's' : ''}: {itemTiers.map(t => `T${t}`).join(', ')}
                           </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+                        <CardContent className="pt-0">
+                          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 mb-3">
                             {itemTiers.map(tier => {
                               const tierKey = `tier${tier}`;
                               const price = item.prices[tierKey];
                               
                               return (
-                                <div key={tierKey} className="space-y-2">
+                                <div key={tierKey} className="space-y-1">
                                   <div className="flex items-center space-x-1">
                                     <Label htmlFor={`${item.name}-${tierKey}`} className="text-sm font-medium">
                                       Tier {tier}
@@ -413,7 +413,7 @@ export default function AdminPricingPage() {
                                       ×
                                     </Button>
                                   </div>
-                                  <div className="flex items-center space-x-2">
+                                  <div className="flex items-center space-x-1">
                                     <Input
                                       id={`${item.name}-${tierKey}`}
                                       type="number"
@@ -421,7 +421,7 @@ export default function AdminPricingPage() {
                                       min="0"
                                       value={price?.toString() || ''}
                                       onChange={(e) => updateItemPrice(actualIndex, tierKey, e.target.value)}
-                                      className="w-20 text-sm"
+                                      className="w-24 text-sm h-8"
                                       placeholder="0.000"
                                     />
                                     <span className="text-xs text-muted-foreground">HC</span>
@@ -432,8 +432,8 @@ export default function AdminPricingPage() {
                           </div>
                           
                           {availableNewTiers.length > 0 && (
-                            <div className="pt-2 border-t">
-                              <Label className="text-sm text-muted-foreground mb-2 block">Add tier:</Label>
+                            <div className="pt-1 border-t">
+                              <Label className="text-xs text-muted-foreground mb-1 block">Add tier:</Label>
                               <div className="flex flex-wrap gap-1">
                                 {availableNewTiers.map(tier => (
                                   <Button
@@ -459,19 +459,19 @@ export default function AdminPricingPage() {
           
           {/* Divider between sections */}
           {editableItems.some(item => item.isNew) && editableItems.some(item => !item.isNew) && (
-            <div className="border-t border-border my-8"></div>
+            <div className="border-t border-border my-6"></div>
           )}
           
           {/* Existing Items Section */}
           {editableItems.some(item => !item.isNew) && (
             <div>
-              <div className="mb-4 flex items-center space-x-2">
-                <h2 className="text-xl font-semibold">Items</h2>
+              <div className="mb-3 flex items-center space-x-2">
+                <h2 className="text-lg font-semibold">Items</h2>
                 <span className="text-sm text-muted-foreground">
                   ({editableItems.filter(item => !item.isNew).length} item{editableItems.filter(item => !item.isNew).length !== 1 ? 's' : ''})
                 </span>
               </div>
-              <div className="grid gap-6">
+              <div className="grid gap-4">
                 {editableItems
                   .filter(item => !item.isNew)
                   .map((item, itemIndex) => {
@@ -481,9 +481,9 @@ export default function AdminPricingPage() {
                     
                     return (
                       <Card key={`existing-${item.name}-${actualIndex}`}>
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="capitalize">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <CardTitle className="capitalize text-lg">
                               {item.name}
                             </CardTitle>
                             <Button
@@ -494,18 +494,18 @@ export default function AdminPricingPage() {
                               Remove Item
                             </Button>
                           </div>
-                          <CardDescription>
+                          <CardDescription className="text-xs">
                             {itemTiers.length} tier{itemTiers.length !== 1 ? 's' : ''}: {itemTiers.map(t => `T${t}`).join(', ')}
                           </CardDescription>
                         </CardHeader>
-                        <CardContent>
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+                        <CardContent className="pt-0">
+                          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 mb-3">
                             {itemTiers.map(tier => {
                               const tierKey = `tier${tier}`;
                               const price = item.prices[tierKey];
                               
                               return (
-                                <div key={tierKey} className="space-y-2">
+                                <div key={tierKey} className="space-y-1">
                                   <div className="flex items-center space-x-1">
                                     <Label htmlFor={`${item.name}-${tierKey}`} className="text-sm font-medium">
                                       Tier {tier}
@@ -519,7 +519,7 @@ export default function AdminPricingPage() {
                                       ×
                                     </Button>
                                   </div>
-                                  <div className="flex items-center space-x-2">
+                                  <div className="flex items-center space-x-1">
                                     <Input
                                       id={`${item.name}-${tierKey}`}
                                       type="number"
@@ -527,7 +527,7 @@ export default function AdminPricingPage() {
                                       min="0"
                                       value={price?.toString() || ''}
                                       onChange={(e) => updateItemPrice(actualIndex, tierKey, e.target.value)}
-                                      className="w-20 text-sm"
+                                      className="w-24 text-sm h-8"
                                       placeholder="0.000"
                                     />
                                     <span className="text-xs text-muted-foreground">HC</span>
@@ -538,8 +538,8 @@ export default function AdminPricingPage() {
                           </div>
                           
                           {availableNewTiers.length > 0 && (
-                            <div className="pt-2 border-t">
-                              <Label className="text-sm text-muted-foreground mb-2 block">Add tier:</Label>
+                            <div className="pt-1 border-t">
+                              <Label className="text-xs text-muted-foreground mb-1 block">Add tier:</Label>
                               <div className="flex flex-wrap gap-1">
                                 {availableNewTiers.map(tier => (
                                   <Button
