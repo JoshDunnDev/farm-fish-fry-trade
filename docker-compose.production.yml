@@ -25,7 +25,6 @@ services:
 
   # Next.js Application (Production - Built from GitHub)
   app:
-    image: farmfishfrytrade:latest
     build:
       context: https://github.com/YOUR_USERNAME/farm-fish-fry-trade.git
       dockerfile: Dockerfile
