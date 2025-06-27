@@ -7,10 +7,14 @@ RUN echo "This should appear in build logs if using new Dockerfile"
 
 # Install dependencies only when needed
 FROM base AS deps
+# Install required packages for Prisma
 RUN apt-get update && apt-get install -y \
     curl \
     openssl \
     ca-certificates \
+    python3 \
+    make \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
@@ -29,8 +33,6 @@ RUN mkdir -p public
 
 # Generate Prisma client and ensure engines are properly set up
 RUN npx prisma generate
-# Pre-warm the engines to avoid runtime generation
-RUN npx prisma version
 
 # Build the application
 RUN npm run build
