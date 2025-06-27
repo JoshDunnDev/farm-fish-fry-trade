@@ -28,8 +28,8 @@ export async function POST() {
       message: "User account created successfully",
       user: {
         id: user.id,
-        email: user.email,
         name: user.name,
+        discordId: user.discordId,
       },
     });
   } catch (error) {

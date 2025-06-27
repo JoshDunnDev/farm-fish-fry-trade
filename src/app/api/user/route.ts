@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 export async function GET() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.email) {
+  if (!session?.user?.discordId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

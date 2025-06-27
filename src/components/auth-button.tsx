@@ -22,11 +22,11 @@ export function AuthButton() {
     async function checkAdminStatus() {
       if (session?.user) {
         try {
-          const response = await fetch('/api/admin/auth');
+          const response = await fetch("/api/admin/auth");
           const data = await response.json();
           setIsAdmin(data.isAdmin);
         } catch (error) {
-          console.error('Error checking admin status:', error);
+          console.error("Error checking admin status:", error);
         }
       } else {
         setIsAdmin(false);
@@ -42,10 +42,10 @@ export function AuthButton() {
       checkAdminStatus();
     };
 
-    window.addEventListener('adminStatusChanged', handleAdminStatusChange);
-    
+    window.addEventListener("adminStatusChanged", handleAdminStatusChange);
+
     return () => {
-      window.removeEventListener('adminStatusChanged', handleAdminStatusChange);
+      window.removeEventListener("adminStatusChanged", handleAdminStatusChange);
     };
   }, [session, status]);
 
@@ -79,7 +79,7 @@ export function AuthButton() {
               {session.user?.name}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
-              {session.user?.email}
+              Discord: {session.user?.discordName || session.user?.name}
             </p>
           </div>
         </DropdownMenuLabel>

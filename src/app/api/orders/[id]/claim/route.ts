@@ -11,7 +11,7 @@ export async function POST(
 ) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.email) {
+  if (!session?.user?.discordId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -60,8 +60,9 @@ export async function POST(
     // Claim the order
     // For SELL orders, go straight to READY_TO_TRADE since seller already has the item
     // For BUY orders, go to IN_PROGRESS since fulfiller needs to gather the item
-    const newStatus = order.orderType === "SELL" ? "READY_TO_TRADE" : "IN_PROGRESS";
-    
+    const newStatus =
+      order.orderType === "SELL" ? "READY_TO_TRADE" : "IN_PROGRESS";
+
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {

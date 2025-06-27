@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
@@ -7,7 +7,6 @@ export async function GET() {
       select: {
         id: true,
         name: true,
-        email: true,
         discordId: true,
         discordName: true,
         isAdmin: true,
@@ -21,10 +20,13 @@ export async function GET() {
       users,
     });
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return NextResponse.json({
-      error: 'Failed to fetch users',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error("Error fetching users:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch users",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
-} 
+}

@@ -197,7 +197,7 @@ export async function getPriceHistory({
         creator: {
           select: {
             name: true,
-            email: true,
+            discordName: true,
           },
         },
       },
