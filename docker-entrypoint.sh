@@ -2,7 +2,8 @@
 set -e
 
 echo "🌾🐟🍳 Starting FarmFishFryTrade..."
-echo "🔧 Docker entrypoint version: 2.0 (simplified - no connection test)"
+echo "🚨🚨🚨 NEW VERSION 3.0 - NO DATABASE CONNECTION TEST 🚨🚨🚨"
+echo "🔧 If you see this message, the new script is running!"
 
 # Set OpenSSL legacy provider for compatibility
 export OPENSSL_CONF=""

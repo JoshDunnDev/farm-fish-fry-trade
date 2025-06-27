@@ -1,8 +1,9 @@
 FROM node:18-slim AS base
 
 # Cache busting - change this to force rebuild
-ARG CACHE_BUST=1
-RUN echo "Cache bust: $CACHE_BUST"
+ARG CACHE_BUST=999
+RUN echo "Cache bust: $CACHE_BUST - FORCING REBUILD NOW"
+RUN echo "This should appear in build logs if using new Dockerfile"
 
 # Install dependencies only when needed
 FROM base AS deps

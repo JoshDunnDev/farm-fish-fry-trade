@@ -28,6 +28,9 @@ services:
     build:
       context: https://github.com/YOUR_USERNAME/farm-fish-fry-trade.git
       dockerfile: Dockerfile
+      args:
+        CACHE_BUST: ${CACHE_BUST:-1}
+      no_cache: true
     restart: unless-stopped
     ports:
       - "${APP_PORT}:3000"
