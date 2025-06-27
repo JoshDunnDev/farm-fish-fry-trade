@@ -57,11 +57,16 @@ SEED_DATABASE=true
 6. Set **Compose path** to: `docker-compose.portainer.yml`
 7. In the **Environment variables** section, add your variables:
    ```
+   POSTGRES_DB=farmfishfrytrade
+   POSTGRES_USER=postgres
    POSTGRES_PASSWORD=your-secure-password
-   NEXTAUTH_URL=http://your-domain.com
+   DB_PORT=5432
+   APP_PORT=7854
+   NEXTAUTH_URL=http://your-domain.com:7854
    NEXTAUTH_SECRET=your-super-secret-key-minimum-32-characters
    DISCORD_CLIENT_ID=your_discord_client_id
    DISCORD_CLIENT_SECRET=your_discord_client_secret
+   SEED_DATABASE=false
    ```
 8. Click **Deploy the stack**
 
@@ -76,7 +81,7 @@ SEED_DATABASE=true
 
 ### 4. Access Your Application
 
-- Application: `http://your-server-ip:3000`
+- Application: `http://your-server-ip:7854`
 - Database: `your-server-ip:5432` (if you need direct access)
 
 ## Production Considerations
@@ -85,7 +90,7 @@ SEED_DATABASE=true
 
 1. **Change default passwords**: Update `POSTGRES_PASSWORD` and `NEXTAUTH_SECRET`
 2. **Use strong secrets**: Generate a secure `NEXTAUTH_SECRET` (minimum 32 characters)
-3. **Firewall**: Only expose port 3000 publicly, keep 5432 internal
+3. **Firewall**: Only expose port 7854 publicly, keep 5432 internal
 4. **HTTPS**: Use a reverse proxy (nginx, Traefik) with SSL certificates
 
 ### Reverse Proxy Setup (Recommended)
@@ -98,7 +103,7 @@ server {
     server_name your-domain.com;
     
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:7854;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -109,18 +114,18 @@ server {
 
 ### Environment Variables Reference
 
-| Variable | Description | Required | Default |
+| Variable | Description | Required | Example |
 |----------|-------------|----------|---------|
-| `POSTGRES_DB` | Database name | No | `farmfishfrytrade` |
-| `POSTGRES_USER` | Database user | No | `postgres` |
-| `POSTGRES_PASSWORD` | Database password | **Yes** | `changeme123` |
-| `DB_PORT` | Database port | No | `5432` |
-| `APP_PORT` | Application port | No | `3000` |
-| `NEXTAUTH_URL` | Full URL of your app | **Yes** | `http://localhost:3000` |
-| `NEXTAUTH_SECRET` | NextAuth secret key | **Yes** | - |
-| `DISCORD_CLIENT_ID` | Discord OAuth Client ID | **Yes** | - |
-| `DISCORD_CLIENT_SECRET` | Discord OAuth Client Secret | **Yes** | - |
-| `SEED_DATABASE` | Seed database on startup | No | `false` |
+| `POSTGRES_DB` | Database name | **Yes** | `farmfishfrytrade` |
+| `POSTGRES_USER` | Database user | **Yes** | `postgres` |
+| `POSTGRES_PASSWORD` | Database password | **Yes** | `your-secure-password` |
+| `DB_PORT` | Database port | **Yes** | `5432` |
+| `APP_PORT` | Application port | **Yes** | `7854` |
+| `NEXTAUTH_URL` | Full URL of your app | **Yes** | `http://your-domain.com:7854` |
+| `NEXTAUTH_SECRET` | NextAuth secret key | **Yes** | `32-char-random-string` |
+| `DISCORD_CLIENT_ID` | Discord OAuth Client ID | **Yes** | `your_client_id` |
+| `DISCORD_CLIENT_SECRET` | Discord OAuth Client Secret | **Yes** | `your_client_secret` |
+| `SEED_DATABASE` | Seed database on startup | **Yes** | `false` |
 
 ## Updating the Application
 
@@ -161,7 +166,7 @@ docker exec -i farmfishfrytrade-db-1 psql -U postgres farmfishfrytrade < backup.
 
 The application includes health checks:
 
-- Application health: `http://your-domain.com/api/health`
+- Application health: `http://your-domain.com:7854/api/health`
 - Database health: Automatic via Docker health checks
 
 ## Troubleshooting
