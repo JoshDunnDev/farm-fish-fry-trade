@@ -2,9 +2,15 @@
 set -e
 
 echo "🌾🐟🍳 Starting FarmFishFryTrade..."
+echo "🔧 Docker entrypoint version: 2.0 (simplified - no connection test)"
 
 # Set OpenSSL legacy provider for compatibility
 export OPENSSL_CONF=""
+
+# Disable Prisma telemetry and problematic behaviors
+export PRISMA_HIDE_UPDATE_MESSAGE=1
+export PRISMA_SKIP_POSTINSTALL_GENERATE=1
+export CHECKPOINT_DISABLE=1
 
 # Simple wait to let database container start
 echo "⏳ Waiting 10 seconds for database container to initialize..."

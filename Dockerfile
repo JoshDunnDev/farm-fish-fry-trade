@@ -1,5 +1,9 @@
 FROM node:18-slim AS base
 
+# Cache busting - change this to force rebuild
+ARG CACHE_BUST=1
+RUN echo "Cache bust: $CACHE_BUST"
+
 # Install dependencies only when needed
 FROM base AS deps
 RUN apt-get update && apt-get install -y \
