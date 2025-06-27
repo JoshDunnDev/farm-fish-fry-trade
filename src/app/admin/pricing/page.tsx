@@ -360,12 +360,12 @@ export default function AdminPricingPage() {
           {editableItems.some(item => item.isNew) && (
             <div>
               <div className="mb-4 flex items-center space-x-2">
-                <h2 className="text-xl font-semibold text-green-700">New Items</h2>
+                <h2 className="text-xl font-semibold">New Items</h2>
                 <span className="text-sm text-muted-foreground">
                   ({editableItems.filter(item => item.isNew).length} item{editableItems.filter(item => item.isNew).length !== 1 ? 's' : ''})
                 </span>
               </div>
-              <div className="grid gap-4 mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="grid gap-4 mb-6">
                 {editableItems
                   .filter(item => item.isNew)
                   .map((item, itemIndex) => {
@@ -374,11 +374,11 @@ export default function AdminPricingPage() {
                     const availableNewTiers = getAvailableNewTiers(item);
                     
                     return (
-                      <Card key={`new-${item.name}-${actualIndex}`} className="bg-white border-green-300">
+                      <Card key={`new-${item.name}-${actualIndex}`}>
                         <CardHeader>
                           <div className="flex items-center justify-between">
-                            <CardTitle className="capitalize text-green-800">
-                              {item.name} <span className="text-sm font-normal text-green-600">(New)</span>
+                            <CardTitle className="capitalize">
+                              {item.name} <span className="text-sm font-normal text-muted-foreground">(New)</span>
                             </CardTitle>
                             <Button
                               variant="destructive"
@@ -455,6 +455,11 @@ export default function AdminPricingPage() {
                   })}
               </div>
             </div>
+          )}
+          
+          {/* Divider between sections */}
+          {editableItems.some(item => item.isNew) && editableItems.some(item => !item.isNew) && (
+            <div className="border-t border-border my-8"></div>
           )}
           
           {/* Existing Items Section */}
