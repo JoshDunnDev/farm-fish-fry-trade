@@ -23,7 +23,7 @@ services:
 
   # Next.js Application
   app:
-    image: joshdunndev/farm-fish-fry-trade:amd64
+    image: joshdunndev/farm-fish-fry-trade:latest
     restart: unless-stopped
     ports:
       - "${APP_PORT:-7854}:3000"
