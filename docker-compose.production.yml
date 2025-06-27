@@ -47,6 +47,9 @@ services:
       - NODE_ENV=production
       - PORT=3000
       
+      # Admin access
+      - ADMIN_SECRET=${ADMIN_SECRET}
+      
       # Optional: Seed database on first run
       - SEED_DATABASE=${SEED_DATABASE}
       
