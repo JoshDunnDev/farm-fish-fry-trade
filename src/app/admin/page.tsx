@@ -70,6 +70,8 @@ export default function AdminAccessPage() {
 
       if (response.ok) {
         setMessage('Admin access granted! Redirecting...');
+        // Trigger admin status change event for other components
+        window.dispatchEvent(new CustomEvent('adminStatusChanged'));
         // Redirect to admin pricing page
         setTimeout(() => {
           router.push('/admin/pricing');

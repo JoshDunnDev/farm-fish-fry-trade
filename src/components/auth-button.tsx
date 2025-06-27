@@ -28,12 +28,25 @@ export function AuthButton() {
         } catch (error) {
           console.error('Error checking admin status:', error);
         }
+      } else {
+        setIsAdmin(false);
       }
     }
 
     if (status !== "loading") {
       checkAdminStatus();
     }
+
+    // Listen for admin status changes
+    const handleAdminStatusChange = () => {
+      checkAdminStatus();
+    };
+
+    window.addEventListener('adminStatusChanged', handleAdminStatusChange);
+    
+    return () => {
+      window.removeEventListener('adminStatusChanged', handleAdminStatusChange);
+    };
   }, [session, status]);
 
   if (status === "loading") {

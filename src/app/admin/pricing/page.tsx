@@ -24,6 +24,7 @@ interface PricingData {
 interface EditableItem {
   name: string;
   prices: { [tierKey: string]: number | null };
+  isNew?: boolean;
 }
 
 export default function AdminPricingPage() {
@@ -80,10 +81,13 @@ export default function AdminPricingPage() {
   }, [session, status, router]);
 
   const loadEditableData = (data: PricingData) => {
-    const items: EditableItem[] = Object.entries(data.items).map(([name, prices]) => ({
-      name,
-      prices: { ...prices },
-    }));
+    const items: EditableItem[] = Object.entries(data.items)
+      .map(([name, prices]) => ({
+        name,
+        prices: { ...prices },
+        isNew: false,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
     setEditableItems(items);
   };
 
@@ -122,11 +126,12 @@ export default function AdminPricingPage() {
         tier3: 1.0,
         tier4: 1.0,
       },
+      isNew: true,
     };
 
     setEditableItems(prev => [newItem, ...prev]);
     setHasUnsavedChanges(true);
-    setMessage(`Added new item: ${itemName} (remember to save)`);
+    setMessage(`Added new item: ${itemName} (will be added to the main list after saving)`);
   };
 
   const removeItem = (itemIndex: number) => {
@@ -194,7 +199,11 @@ export default function AdminPricingPage() {
       if (response.ok) {
         const result = await response.json();
         setOriginalData(result.data);
-        setEditableItems(prev => [...prev]);
+        // Mark all items as no longer new and sort alphabetically
+        const sortedItems = editableItems
+          .map(item => ({ ...item, isNew: false }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setEditableItems(sortedItems);
         setHasUnsavedChanges(false);
         setMessage('All changes saved successfully!');
       } else {
@@ -346,91 +355,208 @@ export default function AdminPricingPage() {
       </div>
 
       {editableItems.length > 0 && (
-        <div className="grid gap-6">
-          {editableItems.map((item, itemIndex) => {
-            const itemTiers = getItemTiers(item);
-            const availableNewTiers = getAvailableNewTiers(item);
-            
-            return (
-              <Card key={`${item.name}-${itemIndex}`}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="capitalize">
-                      {item.name}
-                    </CardTitle>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => removeItem(itemIndex)}
-                    >
-                      Remove Item
-                    </Button>
-                  </div>
-                  <CardDescription>
-                    {itemTiers.length} tier{itemTiers.length !== 1 ? 's' : ''}: {itemTiers.map(t => `T${t}`).join(', ')}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-                    {itemTiers.map(tier => {
-                      const tierKey = `tier${tier}`;
-                      const price = item.prices[tierKey];
-                      
-                      return (
-                        <div key={tierKey} className="space-y-2">
-                          <div className="flex items-center space-x-1">
-                            <Label htmlFor={`${item.name}-${tierKey}`} className="text-sm font-medium">
-                              Tier {tier}
-                            </Label>
+        <div className="space-y-8">
+          {/* New Items Section */}
+          {editableItems.some(item => item.isNew) && (
+            <div>
+              <div className="mb-4 flex items-center space-x-2">
+                <h2 className="text-xl font-semibold text-green-700">New Items</h2>
+                <span className="text-sm text-muted-foreground">
+                  ({editableItems.filter(item => item.isNew).length} item{editableItems.filter(item => item.isNew).length !== 1 ? 's' : ''})
+                </span>
+              </div>
+              <div className="grid gap-4 mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                {editableItems
+                  .filter(item => item.isNew)
+                  .map((item, itemIndex) => {
+                    const actualIndex = editableItems.findIndex(i => i === item);
+                    const itemTiers = getItemTiers(item);
+                    const availableNewTiers = getAvailableNewTiers(item);
+                    
+                    return (
+                      <Card key={`new-${item.name}-${actualIndex}`} className="bg-white border-green-300">
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="capitalize text-green-800">
+                              {item.name} <span className="text-sm font-normal text-green-600">(New)</span>
+                            </CardTitle>
                             <Button
-                              variant="ghost"
+                              variant="destructive"
                               size="sm"
-                              onClick={() => removeTierFromItem(itemIndex, tierKey)}
-                              className="h-4 w-4 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => removeItem(actualIndex)}
                             >
-                              ×
+                              Remove Item
                             </Button>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Input
-                              id={`${item.name}-${tierKey}`}
-                              type="number"
-                              step="0.001"
-                              min="0"
-                              value={price?.toString() || ''}
-                              onChange={(e) => updateItemPrice(itemIndex, tierKey, e.target.value)}
-                              className="w-20 text-sm"
-                              placeholder="0.000"
-                            />
-                            <span className="text-xs text-muted-foreground">HC</span>
+                          <CardDescription>
+                            {itemTiers.length} tier{itemTiers.length !== 1 ? 's' : ''}: {itemTiers.map(t => `T${t}`).join(', ')}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+                            {itemTiers.map(tier => {
+                              const tierKey = `tier${tier}`;
+                              const price = item.prices[tierKey];
+                              
+                              return (
+                                <div key={tierKey} className="space-y-2">
+                                  <div className="flex items-center space-x-1">
+                                    <Label htmlFor={`${item.name}-${tierKey}`} className="text-sm font-medium">
+                                      Tier {tier}
+                                    </Label>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeTierFromItem(actualIndex, tierKey)}
+                                      className="h-4 w-4 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      ×
+                                    </Button>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Input
+                                      id={`${item.name}-${tierKey}`}
+                                      type="number"
+                                      step="0.001"
+                                      min="0"
+                                      value={price?.toString() || ''}
+                                      onChange={(e) => updateItemPrice(actualIndex, tierKey, e.target.value)}
+                                      className="w-20 text-sm"
+                                      placeholder="0.000"
+                                    />
+                                    <span className="text-xs text-muted-foreground">HC</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {availableNewTiers.length > 0 && (
-                    <div className="pt-2 border-t">
-                      <Label className="text-sm text-muted-foreground mb-2 block">Add tier:</Label>
-                      <div className="flex flex-wrap gap-1">
-                        {availableNewTiers.map(tier => (
-                          <Button
-                            key={tier}
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addTierToItem(itemIndex, tier)}
-                            className="h-7 px-2 text-xs"
-                          >
-                            + T{tier}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+                          
+                          {availableNewTiers.length > 0 && (
+                            <div className="pt-2 border-t">
+                              <Label className="text-sm text-muted-foreground mb-2 block">Add tier:</Label>
+                              <div className="flex flex-wrap gap-1">
+                                {availableNewTiers.map(tier => (
+                                  <Button
+                                    key={tier}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => addTierToItem(actualIndex, tier)}
+                                    className="h-7 px-2 text-xs"
+                                  >
+                                    + T{tier}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+          
+          {/* Existing Items Section */}
+          {editableItems.some(item => !item.isNew) && (
+            <div>
+              <div className="mb-4 flex items-center space-x-2">
+                <h2 className="text-xl font-semibold">Items</h2>
+                <span className="text-sm text-muted-foreground">
+                  ({editableItems.filter(item => !item.isNew).length} item{editableItems.filter(item => !item.isNew).length !== 1 ? 's' : ''})
+                </span>
+              </div>
+              <div className="grid gap-6">
+                {editableItems
+                  .filter(item => !item.isNew)
+                  .map((item, itemIndex) => {
+                    const actualIndex = editableItems.findIndex(i => i === item);
+                    const itemTiers = getItemTiers(item);
+                    const availableNewTiers = getAvailableNewTiers(item);
+                    
+                    return (
+                      <Card key={`existing-${item.name}-${actualIndex}`}>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="capitalize">
+                              {item.name}
+                            </CardTitle>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => removeItem(actualIndex)}
+                            >
+                              Remove Item
+                            </Button>
+                          </div>
+                          <CardDescription>
+                            {itemTiers.length} tier{itemTiers.length !== 1 ? 's' : ''}: {itemTiers.map(t => `T${t}`).join(', ')}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+                            {itemTiers.map(tier => {
+                              const tierKey = `tier${tier}`;
+                              const price = item.prices[tierKey];
+                              
+                              return (
+                                <div key={tierKey} className="space-y-2">
+                                  <div className="flex items-center space-x-1">
+                                    <Label htmlFor={`${item.name}-${tierKey}`} className="text-sm font-medium">
+                                      Tier {tier}
+                                    </Label>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeTierFromItem(actualIndex, tierKey)}
+                                      className="h-4 w-4 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      ×
+                                    </Button>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Input
+                                      id={`${item.name}-${tierKey}`}
+                                      type="number"
+                                      step="0.001"
+                                      min="0"
+                                      value={price?.toString() || ''}
+                                      onChange={(e) => updateItemPrice(actualIndex, tierKey, e.target.value)}
+                                      className="w-20 text-sm"
+                                      placeholder="0.000"
+                                    />
+                                    <span className="text-xs text-muted-foreground">HC</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          
+                          {availableNewTiers.length > 0 && (
+                            <div className="pt-2 border-t">
+                              <Label className="text-sm text-muted-foreground mb-2 block">Add tier:</Label>
+                              <div className="flex flex-wrap gap-1">
+                                {availableNewTiers.map(tier => (
+                                  <Button
+                                    key={tier}
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => addTierToItem(actualIndex, tier)}
+                                    className="h-7 px-2 text-xs"
+                                  >
+                                    + T{tier}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
