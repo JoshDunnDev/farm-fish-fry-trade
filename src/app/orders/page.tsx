@@ -625,7 +625,9 @@ export default function OrdersPage() {
                     >
                       <td className="px-3 py-2">
                         <div className="font-medium truncate">
-                          T{order.tier} {order.itemName}
+                          T{order.tier}{" "}
+                          {order.itemName.charAt(0).toUpperCase() +
+                            order.itemName.slice(1).toLowerCase()}
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
                           {formatDateTime(order.createdAt)}
