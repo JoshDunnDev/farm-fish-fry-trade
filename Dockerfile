@@ -15,8 +15,8 @@ WORKDIR /app
 
 # Install dependencies with cache mount
 COPY package.json package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production && npm cache clean --force
+RUN --mount=type=cache,target=/root/.npm,id=npm-deps \
+    npm ci --only=production
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -24,8 +24,8 @@ WORKDIR /app
 
 # Install all dependencies with cache mount
 COPY package.json package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci && npm cache clean --force
+RUN --mount=type=cache,target=/root/.npm,id=npm-builder \
+    npm ci
 
 COPY . .
 
