@@ -74,101 +74,103 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
-        <p className="text-muted-foreground">
-          Manage your account settings and preferences
-        </p>
-      </div>
+    <div className="container mx-auto px-6 py-8">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Profile</h1>
+          <p className="text-muted-foreground">
+            Manage your account settings and preferences
+          </p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Discord Information</CardTitle>
-          <CardDescription>Your Discord account details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-4">
-            <Avatar className="h-16 w-16">
-              <AvatarImage
-                src={session.user?.image || ""}
-                alt={session.user?.name || ""}
-              />
-              <AvatarFallback>{session.user?.name?.[0] || "U"}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-lg font-medium">{session.user?.name}</p>
-              <p className="text-sm text-muted-foreground">
-                Discord ID: {session.user?.discordId}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>BitCraft Information</CardTitle>
-          <CardDescription>
-            Your in-game details for the FarmFishFry cohort
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {session.user?.inGameName && (
-            <div className="flex items-center p-4 bg-muted/50 rounded-lg">
+        <Card>
+          <CardHeader>
+            <CardTitle>Discord Information</CardTitle>
+            <CardDescription>Your Discord account details</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage
+                  src={session.user?.image || ""}
+                  alt={session.user?.name || ""}
+                />
+                <AvatarFallback>{session.user?.name?.[0] || "U"}</AvatarFallback>
+              </Avatar>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Current BitCraft Character
-                </p>
-                <p className="text-lg font-semibold">
-                  {session.user.inGameName}
+                <p className="text-lg font-medium">{session.user?.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Discord ID: {session.user?.discordId}
                 </p>
               </div>
             </div>
-          )}
+          </CardContent>
+        </Card>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="inGameName">
-                {session.user?.inGameName
-                  ? "Update In-Game Name"
-                  : "Set In-Game Name"}
-              </Label>
-              <Input
-                id="inGameName"
-                type="text"
-                placeholder="Enter your BitCraft character name"
-                value={inGameName}
-                onChange={(e) => setInGameName(e.target.value)}
-                maxLength={50}
-              />
-              <p className="text-xs text-muted-foreground">
-                This will be displayed on orders and leaderboards
-              </p>
-            </div>
-
-            {message && (
-              <div
-                className={`text-sm ${
-                  message.includes("Error")
-                    ? "text-destructive"
-                    : "text-green-600"
-                }`}
-              >
-                {message}
+        <Card>
+          <CardHeader>
+            <CardTitle>BitCraft Information</CardTitle>
+            <CardDescription>
+              Your in-game details for the FarmFishFry cohort
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {session.user?.inGameName && (
+              <div className="flex items-center p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Current BitCraft Character
+                  </p>
+                  <p className="text-lg font-semibold">
+                    {session.user.inGameName}
+                  </p>
+                </div>
               </div>
             )}
 
-            <Button 
-              type="submit" 
-              disabled={isLoading}
-              className="bg-green-800 hover:bg-green-700 text-white"
-            >
-              {isLoading ? "Updating..." : "Update Profile"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="inGameName">
+                  {session.user?.inGameName
+                    ? "Update In-Game Name"
+                    : "Set In-Game Name"}
+                </Label>
+                <Input
+                  id="inGameName"
+                  type="text"
+                  placeholder="Enter your BitCraft character name"
+                  value={inGameName}
+                  onChange={(e) => setInGameName(e.target.value)}
+                  maxLength={50}
+                />
+                <p className="text-xs text-muted-foreground">
+                  This will be displayed on orders and leaderboards
+                </p>
+              </div>
+
+              {message && (
+                <div
+                  className={`text-sm ${
+                    message.includes("Error")
+                      ? "text-destructive"
+                      : "text-green-600"
+                  }`}
+                >
+                  {message}
+                </div>
+              )}
+
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="bg-green-800 hover:bg-green-700 text-white"
+              >
+                {isLoading ? "Updating..." : "Update Profile"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

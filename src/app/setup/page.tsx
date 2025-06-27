@@ -104,7 +104,7 @@ export default function SetupPage() {
             </Avatar>
           </div>
           <CardTitle className="text-2xl">
-            Welcome to FarmFishFryTrade!
+            Welcome to FarmyFishFry!
           </CardTitle>
           <CardDescription>
             Hi {session.user?.name}! To get started, please tell us your

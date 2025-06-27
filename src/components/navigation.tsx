@@ -46,7 +46,7 @@ export function Navigation() {
       <nav className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center space-x-6">
-            <div className="text-xl font-bold">FarmFishFryTrade</div>
+            <div className="text-xl font-bold">FarmyFishFry</div>
             <div className="hidden md:flex items-center space-x-4">
               <div className="w-12 h-4 bg-muted animate-pulse rounded"></div>
               <div className="w-20 h-4 bg-muted animate-pulse rounded"></div>
@@ -72,7 +72,7 @@ export function Navigation() {
             href="/"
             className="text-xl font-bold"
           >
-            FarmFishFryTrade
+            FarmyFishFry
           </Link>
           <div className="hidden md:flex items-center space-x-4">
             <Link

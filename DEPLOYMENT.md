@@ -1,6 +1,6 @@
-# FarmFishFryTrade - Production Deployment Guide
+# FarmyFishFry - Production Deployment Guide
 
-This guide explains how to deploy FarmFishFryTrade to production using Docker and Portainer.
+This guide explains how to deploy FarmyFishFry to production using Docker and Portainer.
 
 ## Prerequisites
 
@@ -27,12 +27,12 @@ This guide explains how to deploy FarmFishFryTrade to production using Docker an
 
 2. **In Portainer:**
    - Go to **Stacks** → **Add stack**
-   - Name your stack (e.g., `farmfishfrytrade`)
+   - Name your stack (e.g., `farmy-fish-fry`)
    - Choose **Upload** and upload the `docker-compose.production.yml` file
 
 3. **Set Environment Variables:**
    ```
-   POSTGRES_DB=farmfishfrytrade
+   POSTGRES_DB=farmy-fish-fry
    POSTGRES_USER=postgres
    POSTGRES_PASSWORD=your-secure-password
    DB_PORT=5432
@@ -84,7 +84,7 @@ server {
 
 | Variable | Description | Required | Example |
 |----------|-------------|----------|---------|
-| `POSTGRES_DB` | Database name | **Yes** | `farmfishfrytrade` |
+| `POSTGRES_DB` | Database name | **Yes** | `farmy-fish-fry` |
 | `POSTGRES_USER` | Database user | **Yes** | `postgres` |
 | `POSTGRES_PASSWORD` | Database password | **Yes** | `your-secure-password` |
 | `DB_PORT` | Database port | **Yes** | `5432` |
@@ -145,13 +145,13 @@ curl -H "X-Admin-Secret: your-admin-secret" \
 ### Backup Database
 
 ```bash
-docker exec farmfishfrytrade-db-1 pg_dump -U postgres farmfishfrytrade > backup.sql
+docker exec farmy-fish-fry-db-1 pg_dump -U postgres farmy-fish-fry > backup.sql
 ```
 
 ### Restore Database
 
 ```bash
-docker exec -i farmfishfrytrade-db-1 psql -U postgres farmfishfrytrade < backup.sql
+docker exec -i farmy-fish-fry-db-1 psql -U postgres farmy-fish-fry < backup.sql
 ```
 
 ## Monitoring
@@ -167,16 +167,16 @@ The application includes health checks:
 
 1. **Discord OAuth not working**: Check your redirect URI matches exactly
 2. **Database connection failed**: Verify `DATABASE_URL` and database credentials
-3. **Application won't start**: Check logs with `docker logs farmfishfrytrade-app-1`
+3. **Application won't start**: Check logs with `docker logs farmy-fish-fry-app-1`
 
 ### Viewing Logs
 
 ```bash
 # Application logs
-docker logs farmfishfrytrade-app-1 -f
+docker logs farmy-fish-fry-app-1 -f
 
 # Database logs  
-docker logs farmfishfrytrade-db-1 -f
+docker logs farmy-fish-fry-db-1 -f
 ```
 
 ### Reset Everything

@@ -230,7 +230,7 @@ export default async function StatsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Trading Statistics</h1>
         <p className="text-muted-foreground">
-          Market insights and trading data for FarmFishFryTrade
+          Market insights and trading data for FarmyFishFry
         </p>
       </div>
 

@@ -6,8 +6,9 @@ export default withAuth(
     const token = req.nextauth.token;
     const { pathname } = req.nextUrl;
 
-    // Don't redirect if already on setup, auth, or API routes
+    // Don't redirect if already on setup, auth, API routes, or home page
     if (
+      pathname === "/" ||
       pathname.startsWith("/setup") ||
       pathname.startsWith("/auth") ||
       pathname.startsWith("/api") ||
@@ -32,6 +33,7 @@ export default withAuth(
 
         // Allow access to public routes
         if (
+          pathname === "/" ||
           pathname.startsWith("/auth") ||
           pathname.startsWith("/api/auth") ||
           pathname.startsWith("/_next") ||

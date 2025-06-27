@@ -125,174 +125,176 @@ export default function CreateOrderPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Create New Order</h1>
-        <p className="text-muted-foreground">
-          Post a new {formData.orderType.toLowerCase()} order for other cohort
-          members
-        </p>
-      </div>
+    <div className="container mx-auto px-6 py-8">
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Create New Order</h1>
+          <p className="text-muted-foreground">
+            Post a new {formData.orderType.toLowerCase()} order for other cohort
+            members
+          </p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Order Details</CardTitle>
-          <CardDescription>
-            Fill in the details for your trade order
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="orderType">Order Type</Label>
-              <Select
-                value={formData.orderType}
-                onValueChange={(value) => handleInputChange("orderType", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select order type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BUY">
-                    <span>Buy Order - I want to buy</span>
-                  </SelectItem>
-                  <SelectItem value="SELL">
-                    <span>Sell Order - I have to sell</span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {getOrderTypeDescription()}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="itemName">Item Name</Label>
-              <Input
-                id="itemName"
-                type="text"
-                placeholder="e.g., Fish, Bulbs, Salt, etc."
-                value={formData.itemName}
-                onChange={(e) => handleInputChange("itemName", e.target.value)}
-                maxLength={100}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tier">Tier</Label>
-              <Select
-                value={formData.tier.toString()}
-                onValueChange={(value) =>
-                  handleInputChange("tier", parseInt(value))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ITEM_TIERS.map((tier) => (
-                    <SelectItem key={tier} value={tier.toString()}>
-                      Tier {tier}
+        <Card>
+          <CardHeader>
+            <CardTitle>Order Details</CardTitle>
+            <CardDescription>
+              Fill in the details for your trade order
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="orderType">Order Type</Label>
+                <Select
+                  value={formData.orderType}
+                  onValueChange={(value) => handleInputChange("orderType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select order type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BUY">
+                      <span>Buy Order - I want to buy</span>
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                    <SelectItem value="SELL">
+                      <span>Sell Order - I have to sell</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {getOrderTypeDescription()}
+                </p>
+              </div>
 
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="pricePerUnit">Price per Unit</Label>
+                <Label htmlFor="itemName">Item Name</Label>
                 <Input
-                  id="pricePerUnit"
-                  type="number"
-                  step="0.001"
-                  min="0.001"
-                  placeholder="0.000"
-                  value={formData.pricePerUnit}
-                  onChange={(e) =>
-                    handleInputChange("pricePerUnit", e.target.value)
+                  id="itemName"
+                  type="text"
+                  placeholder="e.g., Fish, Bulbs, Salt, etc."
+                  value={formData.itemName}
+                  onChange={(e) => handleInputChange("itemName", e.target.value)}
+                  maxLength={100}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tier">Tier</Label>
+                <Select
+                  value={formData.tier.toString()}
+                  onValueChange={(value) =>
+                    handleInputChange("tier", parseInt(value))
                   }
-                  required
-                />
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a tier" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ITEM_TIERS.map((tier) => (
+                      <SelectItem key={tier} value={tier.toString()}>
+                        Tier {tier}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  min="1"
-                  placeholder="1"
-                  value={formData.amount}
-                  onChange={(e) => handleInputChange("amount", e.target.value)}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pricePerUnit">Price per Unit</Label>
+                  <Input
+                    id="pricePerUnit"
+                    type="number"
+                    step="0.001"
+                    min="0.001"
+                    placeholder="0.000"
+                    value={formData.pricePerUnit}
+                    onChange={(e) =>
+                      handleInputChange("pricePerUnit", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="amount">Amount</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    min="1"
+                    placeholder="1"
+                    value={formData.amount}
+                    onChange={(e) => handleInputChange("amount", e.target.value)}
+                    required
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="bg-secondary/20 p-4 rounded-md">
-              <p className="text-sm text-muted-foreground mb-2">
-                Order Summary:
-              </p>
-              <div className="space-y-1 text-sm">
-                <p>
-                  <span className="font-medium">Type:</span>{" "}
-                  <span>
-                    {formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1).toLowerCase()} order
-                  </span>
+              <div className="bg-secondary/20 p-4 rounded-md">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Order Summary:
                 </p>
-                <p>
-                  <span className="font-medium">Item:</span>{" "}
-                  {formData.itemName
-                    ? `T${formData.tier} ${formData.itemName}`
-                    : "Not specified"}
-                </p>
-                <p>
-                  <span className="font-medium">Amount:</span>{" "}
-                  {formData.amount || "0"}
-                </p>
-                <p>
-                  <span className="font-medium">Price per unit:</span>{" "}
-                  {formData.pricePerUnit
-                    ? `${formData.pricePerUnit} Hex Coin`
-                    : "0.00 Hex Coin"}
-                </p>
-                <p className="font-medium border-t pt-2">
-                  <span>Total Value:</span>{" "}
-                  {Math.ceil(
-                    (parseFloat(formData.pricePerUnit) || 0) *
-                      (parseInt(formData.amount) || 0)
-                  )}{" "}
-                  Hex Coin
-                </p>
+                <div className="space-y-1 text-sm">
+                  <p>
+                    <span className="font-medium">Type:</span>{" "}
+                    <span>
+                      {formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1).toLowerCase()} order
+                    </span>
+                  </p>
+                  <p>
+                    <span className="font-medium">Item:</span>{" "}
+                    {formData.itemName
+                      ? `T${formData.tier} ${formData.itemName}`
+                      : "Not specified"}
+                  </p>
+                  <p>
+                    <span className="font-medium">Amount:</span>{" "}
+                    {formData.amount || "0"}
+                  </p>
+                  <p>
+                    <span className="font-medium">Price per unit:</span>{" "}
+                    {formData.pricePerUnit
+                      ? `${formData.pricePerUnit} Hex Coin`
+                      : "0.00 Hex Coin"}
+                  </p>
+                  <p className="font-medium border-t pt-2">
+                    <span>Total Value:</span>{" "}
+                    {Math.ceil(
+                      (parseFloat(formData.pricePerUnit) || 0) *
+                        (parseInt(formData.amount) || 0)
+                    )}{" "}
+                    Hex Coin
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {error && <div className="text-sm text-destructive">{error}</div>}
+              {error && <div className="text-sm text-destructive">{error}</div>}
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push("/orders")}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                className="bg-green-800 hover:bg-green-700 text-white"
-              >
-                {isLoading
-                  ? "Creating..."
-                  : `Create ${formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1).toLowerCase()} Order`}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/orders")}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className="bg-green-800 hover:bg-green-700 text-white"
+                >
+                  {isLoading
+                    ? "Creating..."
+                    : `Create ${formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1).toLowerCase()} Order`}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

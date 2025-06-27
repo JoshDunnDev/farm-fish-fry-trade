@@ -192,13 +192,37 @@ export default function OrdersPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="space-y-8">
+      <div className="container mx-auto px-6 py-8 space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Trade Orders</h1>
-            <p className="text-muted-foreground">Loading...</p>
+            <h1 className="text-2xl font-bold tracking-tight">Trade Orders</h1>
+            <p className="text-sm text-muted-foreground">Loading orders...</p>
           </div>
+          <div className="w-24 h-8 bg-muted animate-pulse rounded"></div>
         </div>
+        
+        {/* Loading skeleton for filters */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="w-32 h-8 bg-muted animate-pulse rounded"></div>
+          <div className="w-24 h-8 bg-muted animate-pulse rounded"></div>
+          <div className="w-28 h-8 bg-muted animate-pulse rounded"></div>
+        </div>
+        
+        {/* Loading skeleton for stats */}
+        <div className="flex flex-wrap gap-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="w-16 h-6 bg-muted animate-pulse rounded"></div>
+          ))}
+        </div>
+        
+        {/* Loading skeleton for table */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="p-6 text-center text-muted-foreground">
+              Loading orders...
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -353,7 +377,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto px-6 py-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Trade Orders</h1>

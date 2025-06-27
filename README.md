@@ -1,37 +1,39 @@
-# FarmFishFryTrade 🌾🐟🍳
+# FarmyFishFry
 
-A full-stack web application for managing and fulfilling trade orders between members of the FarmFishFry BitCraft cohort. Built with Next.js, Prisma, PostgreSQL, and Discord OAuth.
+A Next.js-based trading platform for the BitCraft gaming community, specifically designed for the FarmFishFry cohort. This application enables cohort members to create and fulfill trade orders for in-game items across different tiers.
 
 ## Features
 
-- **Discord Authentication**: Log in with your Discord account
-- **Order Management**: Create, claim, and fulfill trade orders
-- **Price Tracking**: View current average prices per item and tier
-- **Leaderboards**: See top fulfillers and buyers
-- **Real-time Updates**: Track order status changes
+- **Discord OAuth Authentication** - Secure login with Discord accounts
+- **Trade Order Management** - Create buy/sell orders for BitCraft items
+- **Tier-based Pricing** - Support for items across 10 different tiers
+- **Real-time Updates** - Live pricing data with hot-reload capability
+- **Admin Panel** - Price management interface for administrators
+- **Trading Statistics** - Market insights and leaderboards
+- **Responsive Design** - Works on desktop and mobile devices
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14 + React + TypeScript
-- **UI**: TailwindCSS + shadcn/ui components
-- **Backend**: Next.js API routes
-- **Database**: PostgreSQL + Prisma ORM
-- **Authentication**: NextAuth.js with Discord OAuth
-- **Deployment**: Docker Compose
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS, Radix UI components
+- **Authentication**: NextAuth.js with Discord provider
+- **Database**: PostgreSQL with Prisma ORM
+- **Deployment**: Docker with Docker Compose
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ (for development)
+- Node.js 18+
 - Docker and Docker Compose
 - Discord application for OAuth
 
-### 1. Clone the Repository
+### Installation
 
+1. Clone the repository:
 ```bash
-git clone <your-repo-url>
-cd farm-fish-fry-trade
+git clone <repository-url>
+cd farmy-fish-fry
 ```
 
 ### 2. Set up Discord OAuth
@@ -98,7 +100,7 @@ For production deployment with Portainer or Docker Compose, see **[DEPLOYMENT.md
 ## Project Structure
 
 ```
-farmfishfrytrade/
+farmy-fish-fry/
 ├── src/
 │   ├── app/                 # Next.js 14 app router
 │   │   ├── page.tsx        # Homepage (prices + leaderboard)
@@ -151,7 +153,7 @@ npm run db:studio    # Open Prisma Studio (database GUI)
 docker-compose up -d          # Start all services
 docker-compose down           # Stop all services
 docker-compose logs app       # View app logs
-docker-compose exec db psql -U postgres -d farmfishfrytrade  # Access database
+docker-compose exec db psql -U postgres -d farmy-fish-fry  # Access database
 ```
 
 ## Contributing

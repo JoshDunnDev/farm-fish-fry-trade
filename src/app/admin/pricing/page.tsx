@@ -225,8 +225,45 @@ export default function AdminPricingPage() {
   if (loading) {
     return (
       <div className="container mx-auto p-6">
-        <div className="text-center">
-          <p>Loading admin panel...</p>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Price Management</h1>
+          <p className="text-muted-foreground mt-2">Loading pricing data...</p>
+        </div>
+
+        {/* Loading skeleton for save bar */}
+        <div className="mb-6 p-4 bg-muted/30 rounded-lg animate-pulse">
+          <div className="h-4 bg-muted rounded w-48"></div>
+        </div>
+
+        {/* Loading skeleton for add button */}
+        <div className="mb-6 flex justify-between items-center">
+          <div className="w-32 h-10 bg-muted animate-pulse rounded"></div>
+          <div className="w-24 h-4 bg-muted animate-pulse rounded"></div>
+        </div>
+
+        {/* Loading skeleton for items */}
+        <div className="grid gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="w-32 h-6 bg-muted animate-pulse rounded"></div>
+                  <div className="w-24 h-8 bg-muted animate-pulse rounded"></div>
+                </div>
+                <div className="w-48 h-4 bg-muted animate-pulse rounded"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {[1, 2, 3, 4].map((j) => (
+                    <div key={j} className="space-y-2">
+                      <div className="w-16 h-4 bg-muted animate-pulse rounded"></div>
+                      <div className="w-20 h-8 bg-muted animate-pulse rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
     );
