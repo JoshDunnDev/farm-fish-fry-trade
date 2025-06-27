@@ -47,7 +47,33 @@ SEED_DATABASE=true
 
 ### 3. Deploy with Portainer
 
-#### Option A: Git Repository Deployment (Recommended)
+#### Option A: Pre-built Image Deployment (Recommended - Most Reliable)
+
+1. **First, enable GitHub Actions** to build your Docker image:
+   - Push your code to GitHub (including the `.github/workflows/docker-build.yml` file)
+   - GitHub Actions will automatically build and push the image to `ghcr.io/yourusername/farm-fish-fry-trade:latest`
+
+2. **Deploy in Portainer:**
+   - In Portainer, go to **Stacks** → **Add stack**
+   - Name your stack (e.g., `farmfishfrytrade`)
+   - Choose **Upload** and upload the `docker-compose.image.yml` file
+   - In the **Environment variables** section, add:
+     ```
+     POSTGRES_DB=farmfishfrytrade
+     POSTGRES_USER=postgres
+     POSTGRES_PASSWORD=your-secure-password
+     DB_PORT=5432
+     APP_PORT=7854
+     APP_IMAGE=ghcr.io/yourusername/farm-fish-fry-trade:latest
+     NEXTAUTH_URL=http://your-domain.com:7854
+     NEXTAUTH_SECRET=your-super-secret-key-minimum-32-characters
+     DISCORD_CLIENT_ID=your_discord_client_id
+     DISCORD_CLIENT_SECRET=your_discord_client_secret
+     SEED_DATABASE=false
+     ```
+   - Click **Deploy the stack**
+
+#### Option B: Git Repository Deployment (If Option A doesn't work)
 
 1. In Portainer, go to **Stacks**
 2. Click **Add stack**
@@ -55,28 +81,16 @@ SEED_DATABASE=true
 4. Choose **Repository** as the build method
 5. Enter your Git repository URL: `https://github.com/yourusername/farm-fish-fry-trade`
 6. Set **Compose path** to: `docker-compose.portainer.yml`
-7. In the **Environment variables** section, add your variables:
-   ```
-   POSTGRES_DB=farmfishfrytrade
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=your-secure-password
-   DB_PORT=5432
-   APP_PORT=7854
-   NEXTAUTH_URL=http://your-domain.com:7854
-   NEXTAUTH_SECRET=your-super-secret-key-minimum-32-characters
-   DISCORD_CLIENT_ID=your_discord_client_id
-   DISCORD_CLIENT_SECRET=your_discord_client_secret
-   SEED_DATABASE=false
-   ```
+7. In the **Environment variables** section, add your variables (same as Option A, but without `APP_IMAGE`)
 8. Click **Deploy the stack**
 
-#### Option B: Upload Docker Compose File
+#### Option C: Upload Docker Compose File
 
 1. In Portainer, go to **Stacks**
 2. Click **Add stack**
 3. Name your stack (e.g., `farmfishfrytrade`)
-4. Choose **Upload** and upload the `docker-compose.portainer.yml` file
-5. In the **Environment variables** section, add your variables from above
+4. Choose **Upload** and upload the appropriate docker-compose file
+5. In the **Environment variables** section, add your variables
 6. Click **Deploy the stack**
 
 ### 4. Access Your Application
@@ -129,7 +143,18 @@ server {
 
 ## Updating the Application
 
-### If you deployed via Git Repository (Option A):
+### If you deployed via Pre-built Image (Option A - Recommended):
+
+1. Push your code changes to your Git repository
+2. GitHub Actions will automatically build and push a new image
+3. In Portainer, go to your stack
+4. Click **Re-pull and redeploy** 
+5. The application will automatically:
+   - Pull the latest image from the registry
+   - Run database migrations
+   - Restart with zero downtime
+
+### If you deployed via Git Repository (Option B):
 
 1. Push your code changes to your Git repository
 2. In Portainer, go to your stack
@@ -140,9 +165,9 @@ server {
    - Run database migrations
    - Restart with zero downtime
 
-### If you deployed via Upload (Option B):
+### If you deployed via Upload (Option C):
 
-1. Upload the updated `docker-compose.portainer.yml` file
+1. Upload the updated docker-compose file
 2. In Portainer, go to your stack
 3. Click **Editor**
 4. Update the stack configuration

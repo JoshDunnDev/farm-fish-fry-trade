@@ -25,13 +25,11 @@ services:
     security_opt:
       - no-new-privileges:true
 
-  # Next.js Application - Built from Git repository
+  # Next.js Application - Using pre-built image
   app:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
-      args:
-        - NODE_ENV=production
+    # Replace this with your actual Docker Hub or GitHub Container Registry image
+    # Example: ghcr.io/yourusername/farm-fish-fry-trade:latest
+    image: ${APP_IMAGE:-farmfishfrytrade:latest}
     restart: unless-stopped
     ports:
       - "${APP_PORT}:3000"
