@@ -11,22 +11,49 @@ echo "⏳ Waiting for database to be ready..."
 
 # Function to test database connection using a simpler approach
 test_db_connection() {
-  # Use a simpler test that doesn't require writing to engines
+  # Extract host and port from DATABASE_URL for basic connectivity test
   node -e "
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-    prisma.\$connect()
-      .then(() => {
-        console.log('Database connected');
-        return prisma.\$disconnect();
-      })
-      .then(() => {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+      console.error('DATABASE_URL not set');
+      process.exit(1);
+    }
+    
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname;
+      const port = parsed.port || 5432;
+      
+      console.log('Testing connection to database at', host + ':' + port);
+      
+      // Use a simple TCP connection test
+      const net = require('net');
+      const socket = new net.Socket();
+      
+      socket.setTimeout(5000);
+      
+      socket.connect(port, host, () => {
+        console.log('Database connection successful');
+        socket.destroy();
         process.exit(0);
-      })
-      .catch((error) => {
-        console.error('Database connection failed:', error.message);
+      });
+      
+      socket.on('error', (err) => {
+        console.error('Database connection failed:', err.message);
+        socket.destroy();
         process.exit(1);
       });
+      
+      socket.on('timeout', () => {
+        console.error('Database connection timeout');
+        socket.destroy();
+        process.exit(1);
+      });
+      
+    } catch (error) {
+      console.error('Invalid DATABASE_URL:', error.message);
+      process.exit(1);
+    }
   " 2>/dev/null
 }
 
