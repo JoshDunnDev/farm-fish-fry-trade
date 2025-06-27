@@ -40,7 +40,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/@prisma/engines/libquery_engine-linux-musl-openssl-3.0.x.so.node
 
 # Install curl and openssl for health checks and Prisma
-RUN apk add --no-cache curl openssl
+RUN apk add --no-cache curl openssl netcat-openbsd
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

@@ -11,50 +11,39 @@ echo "⏳ Waiting for database to be ready..."
 
 # Function to test database connection using a simpler approach
 test_db_connection() {
-  # Extract host and port from DATABASE_URL for basic connectivity test
-  node -e "
-    const url = process.env.DATABASE_URL;
-    if (!url) {
-      console.error('DATABASE_URL not set');
-      process.exit(1);
-    }
-    
-    try {
-      const parsed = new URL(url);
-      const host = parsed.hostname;
-      const port = parsed.port || 5432;
-      
-      console.log('Testing connection to database at', host + ':' + port);
-      
-      // Use a simple TCP connection test
-      const net = require('net');
-      const socket = new net.Socket();
-      
-      socket.setTimeout(5000);
-      
-      socket.connect(port, host, () => {
-        console.log('Database connection successful');
-        socket.destroy();
-        process.exit(0);
-      });
-      
-      socket.on('error', (err) => {
-        console.error('Database connection failed:', err.message);
-        socket.destroy();
-        process.exit(1);
-      });
-      
-      socket.on('timeout', () => {
-        console.error('Database connection timeout');
-        socket.destroy();
-        process.exit(1);
-      });
-      
-    } catch (error) {
-      console.error('Invalid DATABASE_URL:', error.message);
-      process.exit(1);
-    }
-  " 2>/dev/null
+  # Extract host and port from DATABASE_URL using shell commands
+  if [ -z "$DATABASE_URL" ]; then
+    echo "DATABASE_URL not set"
+    return 1
+  fi
+  
+  # Extract host and port from postgres://user:pass@host:port/db format
+  # Remove protocol
+  url_without_protocol=$(echo "$DATABASE_URL" | sed 's|^[^:]*://||')
+  # Extract everything before the @ symbol (user:pass)
+  user_pass=$(echo "$url_without_protocol" | cut -d'@' -f1)
+  # Extract everything after the @ symbol (host:port/db)
+  host_port_db=$(echo "$url_without_protocol" | cut -d'@' -f2)
+  # Extract host:port (everything before the /)
+  host_port=$(echo "$host_port_db" | cut -d'/' -f1)
+  # Extract host
+  host=$(echo "$host_port" | cut -d':' -f1)
+  # Extract port (default to 5432 if not specified)
+  port=$(echo "$host_port" | cut -d':' -f2)
+  if [ "$port" = "$host" ]; then
+    port=5432
+  fi
+  
+  echo "Testing connection to database at $host:$port"
+  
+  # Use timeout and nc (netcat) for simple TCP connection test
+  if timeout 5 nc -z "$host" "$port" 2>/dev/null; then
+    echo "Database connection successful"
+    return 0
+  else
+    echo "Database connection failed"
+    return 1
+  fi
 }
 
 # Retry logic
