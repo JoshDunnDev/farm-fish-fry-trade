@@ -53,6 +53,7 @@ model User {
   createdOrders Order[]   @relation("Creator")
   sessions      Session[]
   createdPricing Pricing[] @relation("PricingCreator")
+  priceHistory  PriceHistory[] @relation("PriceHistoryCreator")
 
   @@map("users")
 }
@@ -119,4 +120,19 @@ model PricingMetadata {
   updatedAt   DateTime @updatedAt
 
   @@map("pricing_metadata")
+}
+
+model PriceHistory {
+  id          String   @id @default(cuid())
+  itemName    String
+  tier        Int
+  price       Float
+  previousPrice Float?
+  changeType  String   // 'created', 'updated', 'deleted'
+  createdAt   DateTime @default(now())
+  createdBy   String
+  creator     User     @relation("PriceHistoryCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([itemName, tier, createdAt])
+  @@map("price_history")
 }

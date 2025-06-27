@@ -1,7 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import {
+  updatePriceWithHistory,
+  deletePriceWithHistory,
+} from "@/lib/price-history";
 
 async function isUserAdmin(email: string): Promise<boolean> {
   try {
@@ -11,7 +15,7 @@ async function isUserAdmin(email: string): Promise<boolean> {
     });
     return user?.isAdmin || false;
   } catch (error) {
-    console.error('Error checking admin status:', error);
+    console.error("Error checking admin status:", error);
     return false;
   }
 }
@@ -20,22 +24,22 @@ async function isUserAdmin(email: string): Promise<boolean> {
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const isAdmin = await isUserAdmin(session.user.email);
     if (!isAdmin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+      return NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403 }
+      );
     }
 
     // Fetch pricing data from database ordered alphabetically by name, then by tier
     const pricingEntries = await prisma.pricing.findMany({
-      orderBy: [
-        { itemName: 'asc' },
-        { tier: 'asc' }
-      ]
+      orderBy: [{ itemName: "asc" }, { tier: "asc" }],
     });
 
     // Fetch metadata
@@ -43,8 +47,8 @@ export async function GET(request: NextRequest) {
 
     // Transform pricing data to the expected format
     const items: { [itemName: string]: { [tierKey: string]: number } } = {};
-    
-    pricingEntries.forEach(entry => {
+
+    pricingEntries.forEach((entry) => {
       if (!items[entry.itemName]) {
         items[entry.itemName] = {};
       }
@@ -53,16 +57,16 @@ export async function GET(request: NextRequest) {
 
     // Transform metadata to the expected format
     const notes: { [key: string]: string } = {};
-    let lastUpdated = new Date().toISOString().split('T')[0];
-    let version = '1.0.0';
+    let lastUpdated = new Date().toISOString().split("T")[0];
+    let version = "1.0.0";
 
-    metadata.forEach(meta => {
-      if (meta.key === 'lastUpdated') {
+    metadata.forEach((meta) => {
+      if (meta.key === "lastUpdated") {
         lastUpdated = meta.value;
-      } else if (meta.key === 'version') {
+      } else if (meta.key === "version") {
         version = meta.value;
-      } else if (meta.key.startsWith('note_')) {
-        const noteKey = meta.key.replace('note_', '');
+      } else if (meta.key.startsWith("note_")) {
+        const noteKey = meta.key.replace("note_", "");
         notes[noteKey] = meta.value;
       }
     });
@@ -71,19 +75,22 @@ export async function GET(request: NextRequest) {
       lastUpdated,
       version,
       items,
-      notes
+      notes,
     };
-    
+
     return NextResponse.json({
       success: true,
       data: currentData,
-      source: 'database'
+      source: "database",
     });
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -91,103 +98,106 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const isAdmin = await isUserAdmin(session.user.email);
     if (!isAdmin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+      return NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403 }
+      );
     }
 
     // Get the admin user
     const adminUser = await prisma.user.findUnique({
-      where: { email: session.user.email }
+      where: { email: session.user.email },
     });
 
     if (!adminUser) {
-      return NextResponse.json({ error: 'Admin user not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Admin user not found" },
+        { status: 404 }
+      );
     }
 
     const body = await request.json();
     const { items, lastUpdated, version, notes } = body;
 
     // Validate the structure
-    if (!items || typeof items !== 'object') {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid pricing data: items object is required'
-      }, { status: 400 });
+    if (!items || typeof items !== "object") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid pricing data: items object is required",
+        },
+        { status: 400 }
+      );
     }
 
-    // Use a transaction to update pricing data while preserving creation order
+    // Use a transaction to update pricing data with history tracking
     await prisma.$transaction(async (tx) => {
       // Get existing pricing data to determine what's new vs updated
       const existingPricing = await tx.pricing.findMany();
-      const existingKeys = new Set(existingPricing.map(p => `${p.itemName}-${p.tier}`));
-      
-      // First, delete items that are no longer present
+      const existingKeys = new Set(
+        existingPricing.map((p) => `${p.itemName}-${p.tier}`)
+      );
+
+      // First, handle deletions - items that are no longer present
       const newKeys = new Set();
       for (const [itemName, prices] of Object.entries(items)) {
-        for (const tierKey of Object.keys(prices as { [key: string]: number })) {
-          const tier = parseInt(tierKey.replace('tier', ''));
+        for (const tierKey of Object.keys(
+          prices as { [key: string]: number }
+        )) {
+          const tier = parseInt(tierKey.replace("tier", ""));
           newKeys.add(`${itemName}-${tier}`);
         }
       }
-      
-      // Delete pricing entries that are no longer present
+
+      // Delete pricing entries that are no longer present (with history)
       for (const existing of existingPricing) {
         const key = `${existing.itemName}-${existing.tier}`;
         if (!newKeys.has(key)) {
-          await tx.pricing.delete({
-            where: { id: existing.id }
+          await deletePriceWithHistory({
+            itemName: existing.itemName,
+            tier: existing.tier,
+            userId: adminUser.id,
           });
         }
       }
-      
-      // Update existing items and create new ones
+
+      // Update existing items and create new ones (with history)
       for (const [itemName, prices] of Object.entries(items)) {
-        for (const [tierKey, price] of Object.entries(prices as { [key: string]: number })) {
-          const tier = parseInt(tierKey.replace('tier', ''));
-          const key = `${itemName}-${tier}`;
-          
-          if (existingKeys.has(key)) {
-            // Update existing pricing
-            await tx.pricing.updateMany({
-              where: {
-                itemName: itemName,
-                tier: tier
-              },
-              data: {
-                price: price,
-                updatedAt: new Date()
-              }
-            });
-          } else {
-            // Create new pricing (will get new createdAt timestamp)
-            await tx.pricing.create({
-              data: {
-                itemName,
-                tier,
-                price,
-                createdBy: adminUser.id,
-              }
-            });
-          }
+        for (const [tierKey, price] of Object.entries(
+          prices as { [key: string]: number }
+        )) {
+          const tier = parseInt(tierKey.replace("tier", ""));
+
+          // Use the price history function to update/create with tracking
+          await updatePriceWithHistory({
+            itemName,
+            tier,
+            newPrice: price,
+            userId: adminUser.id,
+          });
         }
       }
 
       // Update metadata
       await tx.pricingMetadata.deleteMany();
-      
+
       const metadataEntries = [
-        { key: 'lastUpdated', value: lastUpdated || new Date().toISOString().split('T')[0] },
-        { key: 'version', value: version || '1.0.0' },
+        {
+          key: "lastUpdated",
+          value: lastUpdated || new Date().toISOString().split("T")[0],
+        },
+        { key: "version", value: version || "1.0.0" },
       ];
 
       // Add notes
-      if (notes && typeof notes === 'object') {
+      if (notes && typeof notes === "object") {
         Object.entries(notes).forEach(([key, value]) => {
           metadataEntries.push({
             key: `note_${key}`,
@@ -203,18 +213,16 @@ export async function POST(request: NextRequest) {
 
     // Fetch the updated data to return
     const updatedPricingEntries = await prisma.pricing.findMany({
-      orderBy: [
-        { itemName: 'asc' },
-        { tier: 'asc' }
-      ]
+      orderBy: [{ itemName: "asc" }, { tier: "asc" }],
     });
 
     const updatedMetadata = await prisma.pricingMetadata.findMany();
 
     // Transform back to expected format
-    const updatedItems: { [itemName: string]: { [tierKey: string]: number } } = {};
-    
-    updatedPricingEntries.forEach(entry => {
+    const updatedItems: { [itemName: string]: { [tierKey: string]: number } } =
+      {};
+
+    updatedPricingEntries.forEach((entry) => {
       if (!updatedItems[entry.itemName]) {
         updatedItems[entry.itemName] = {};
       }
@@ -222,16 +230,16 @@ export async function POST(request: NextRequest) {
     });
 
     const updatedNotes: { [key: string]: string } = {};
-    let updatedLastUpdated = new Date().toISOString().split('T')[0];
-    let updatedVersion = '1.0.0';
+    let updatedLastUpdated = new Date().toISOString().split("T")[0];
+    let updatedVersion = "1.0.0";
 
-    updatedMetadata.forEach(meta => {
-      if (meta.key === 'lastUpdated') {
+    updatedMetadata.forEach((meta) => {
+      if (meta.key === "lastUpdated") {
         updatedLastUpdated = meta.value;
-      } else if (meta.key === 'version') {
+      } else if (meta.key === "version") {
         updatedVersion = meta.value;
-      } else if (meta.key.startsWith('note_')) {
-        const noteKey = meta.key.replace('note_', '');
+      } else if (meta.key.startsWith("note_")) {
+        const noteKey = meta.key.replace("note_", "");
         updatedNotes[noteKey] = meta.value;
       }
     });
@@ -240,22 +248,24 @@ export async function POST(request: NextRequest) {
       lastUpdated: updatedLastUpdated,
       version: updatedVersion,
       items: updatedItems,
-      notes: updatedNotes
+      notes: updatedNotes,
     };
 
     return NextResponse.json({
       success: true,
-      message: 'Pricing data updated successfully',
+      message: "Pricing data updated successfully",
       data: newPricingData,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
-    console.error('Error updating pricing data:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    console.error("Error updating pricing data:", error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
 }
 
@@ -263,64 +273,87 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
+
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
     const isAdmin = await isUserAdmin(session.user.email);
     if (!isAdmin) {
-      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+      return NextResponse.json(
+        { error: "Admin access required" },
+        { status: 403 }
+      );
     }
 
     const adminUser = await prisma.user.findUnique({
-      where: { email: session.user.email }
+      where: { email: session.user.email },
     });
 
     if (!adminUser) {
-      return NextResponse.json({ error: 'Admin user not found' }, { status: 404 });
+      return NextResponse.json(
+        { error: "Admin user not found" },
+        { status: 404 }
+      );
     }
 
     const body = await request.json();
     const { itemName, prices } = body;
 
     if (!itemName || !prices) {
-      return NextResponse.json({
-        success: false,
-        error: 'itemName and prices are required'
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "itemName and prices are required",
+        },
+        { status: 400 }
+      );
     }
 
-    // Update pricing for the specific item
+    // Update pricing for the specific item with history tracking
     await prisma.$transaction(async (tx) => {
-      // Remove existing prices for this item
-      await tx.pricing.deleteMany({
-        where: { itemName }
+      // Get existing prices for this item to handle deletions
+      const existingPrices = await tx.pricing.findMany({
+        where: { itemName },
       });
 
-      // Add new prices for this item
-      const pricingEntries = [];
-      for (const [tierKey, price] of Object.entries(prices as { [key: string]: number })) {
-        const tier = parseInt(tierKey.replace('tier', ''));
-        pricingEntries.push({
-          itemName,
-          tier,
-          price,
-          createdBy: adminUser.id,
-        });
+      // Delete existing prices that are no longer in the new price list
+      const newTierKeys = Object.keys(prices as { [key: string]: number });
+      const newTiers = newTierKeys.map((key) =>
+        parseInt(key.replace("tier", ""))
+      );
+
+      for (const existing of existingPrices) {
+        if (!newTiers.includes(existing.tier)) {
+          await deletePriceWithHistory({
+            itemName: existing.itemName,
+            tier: existing.tier,
+            userId: adminUser.id,
+          });
+        }
       }
 
-      if (pricingEntries.length > 0) {
-        await tx.pricing.createMany({
-          data: pricingEntries,
+      // Update or create new prices with history tracking
+      for (const [tierKey, price] of Object.entries(
+        prices as { [key: string]: number }
+      )) {
+        const tier = parseInt(tierKey.replace("tier", ""));
+        await updatePriceWithHistory({
+          itemName,
+          tier,
+          newPrice: price,
+          userId: adminUser.id,
         });
       }
 
       // Update lastUpdated metadata
       await tx.pricingMetadata.upsert({
-        where: { key: 'lastUpdated' },
-        update: { value: new Date().toISOString().split('T')[0] },
-        create: { key: 'lastUpdated', value: new Date().toISOString().split('T')[0] }
+        where: { key: "lastUpdated" },
+        update: { value: new Date().toISOString().split("T")[0] },
+        create: {
+          key: "lastUpdated",
+          value: new Date().toISOString().split("T")[0],
+        },
       });
     });
 
@@ -328,13 +361,15 @@ export async function PUT(request: NextRequest) {
       success: true,
       message: `Updated prices for ${itemName}`,
       updatedItem: { [itemName]: prices },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
   }
-} 
+}

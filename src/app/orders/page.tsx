@@ -115,54 +115,121 @@ export default function OrdersPage() {
   };
 
   const handleClaimOrder = async (orderId: string) => {
+    // Optimistic update - immediately update the UI
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === orderId
+          ? { ...order, status: "IN_PROGRESS", claimer: currentUser }
+          : order
+      )
+    );
+
     try {
       const response = await fetch(`/api/orders/${orderId}/claim`, {
         method: "POST",
       });
 
-      if (response.ok) {
-        fetchOrders(); // Refresh orders
-      } else {
+      if (!response.ok) {
+        // Revert the optimistic update on error
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, status: "OPEN", claimer: null }
+              : order
+          )
+        );
         const error = await response.json();
         alert(error.error || "Failed to claim order");
       }
     } catch (error) {
+      // Revert the optimistic update on error
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === orderId
+            ? { ...order, status: "OPEN", claimer: null }
+            : order
+        )
+      );
       console.error("Error claiming order:", error);
       alert("Failed to claim order");
     }
   };
 
   const handleCompleteOrder = async (orderId: string) => {
+    // Optimistic update - immediately update the UI
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === orderId
+          ? {
+              ...order,
+              status: "FULFILLED",
+              fulfilledAt: new Date().toISOString(),
+            }
+          : order
+      )
+    );
+
     try {
       const response = await fetch(`/api/orders/${orderId}/complete`, {
         method: "POST",
       });
 
-      if (response.ok) {
-        fetchOrders(); // Refresh orders
-      } else {
+      if (!response.ok) {
+        // Revert the optimistic update on error
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId
+              ? { ...order, status: "READY_TO_TRADE", fulfilledAt: undefined }
+              : order
+          )
+        );
         const error = await response.json();
         alert(error.error || "Failed to complete order");
       }
     } catch (error) {
+      // Revert the optimistic update on error
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === orderId
+            ? { ...order, status: "READY_TO_TRADE", fulfilledAt: undefined }
+            : order
+        )
+      );
       console.error("Error completing order:", error);
       alert("Failed to complete order");
     }
   };
 
   const handleMarkReady = async (orderId: string) => {
+    // Optimistic update - immediately update the UI
+    setOrders((prevOrders) =>
+      prevOrders.map((order) =>
+        order.id === orderId ? { ...order, status: "READY_TO_TRADE" } : order
+      )
+    );
+
     try {
       const response = await fetch(`/api/orders/${orderId}/ready`, {
         method: "POST",
       });
 
-      if (response.ok) {
-        fetchOrders(); // Refresh orders
-      } else {
+      if (!response.ok) {
+        // Revert the optimistic update on error
+        setOrders((prevOrders) =>
+          prevOrders.map((order) =>
+            order.id === orderId ? { ...order, status: "IN_PROGRESS" } : order
+          )
+        );
         const error = await response.json();
         alert(error.error || "Failed to mark order as ready");
       }
     } catch (error) {
+      // Revert the optimistic update on error
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === orderId ? { ...order, status: "IN_PROGRESS" } : order
+        )
+      );
       console.error("Error marking order as ready:", error);
       alert("Failed to mark order as ready");
     }
@@ -173,18 +240,43 @@ export default function OrdersPage() {
       return;
     }
 
+    // Store the order for potential restoration
+    const orderToDelete = orders.find((order) => order.id === orderId);
+
+    // Optimistic update - immediately remove from UI
+    setOrders((prevOrders) =>
+      prevOrders.filter((order) => order.id !== orderId)
+    );
+
     try {
       const response = await fetch(`/api/orders?id=${orderId}`, {
         method: "DELETE",
       });
 
-      if (response.ok) {
-        fetchOrders(); // Refresh orders
-      } else {
+      if (!response.ok) {
+        // Revert the optimistic update on error - restore the order
+        if (orderToDelete) {
+          setOrders((prevOrders) =>
+            [...prevOrders, orderToDelete].sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            )
+          );
+        }
         const error = await response.json();
         alert(error.error || "Failed to delete order");
       }
     } catch (error) {
+      // Revert the optimistic update on error - restore the order
+      if (orderToDelete) {
+        setOrders((prevOrders) =>
+          [...prevOrders, orderToDelete].sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        );
+      }
       console.error("Error deleting order:", error);
       alert("Failed to delete order");
     }
@@ -200,21 +292,24 @@ export default function OrdersPage() {
           </div>
           <div className="w-24 h-8 bg-muted animate-pulse rounded"></div>
         </div>
-        
+
         {/* Loading skeleton for filters */}
         <div className="flex flex-wrap items-center gap-4">
           <div className="w-32 h-8 bg-muted animate-pulse rounded"></div>
           <div className="w-24 h-8 bg-muted animate-pulse rounded"></div>
           <div className="w-28 h-8 bg-muted animate-pulse rounded"></div>
         </div>
-        
+
         {/* Loading skeleton for stats */}
         <div className="flex flex-wrap gap-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="w-16 h-6 bg-muted animate-pulse rounded"></div>
+            <div
+              key={i}
+              className="w-16 h-6 bg-muted animate-pulse rounded"
+            ></div>
           ))}
         </div>
-        
+
         {/* Loading skeleton for table */}
         <Card>
           <CardContent className="p-0">
@@ -237,7 +332,7 @@ export default function OrdersPage() {
       if (activeTab === "all" && order.status === "FULFILLED") {
         return false;
       }
-      
+
       if (
         filters.orderType !== "ALL" &&
         order.orderType !== filters.orderType
@@ -256,8 +351,9 @@ export default function OrdersPage() {
       open: orderList.filter((order) => order.status === "OPEN").length,
       inProgress: orderList.filter((order) => order.status === "IN_PROGRESS")
         .length,
-      readyToTrade: orderList.filter((order) => order.status === "READY_TO_TRADE")
-        .length,
+      readyToTrade: orderList.filter(
+        (order) => order.status === "READY_TO_TRADE"
+      ).length,
       fulfilled: orderList.filter((order) => order.status === "FULFILLED")
         .length,
       buy: orderList.filter((order) => order.orderType === "BUY").length,
@@ -266,9 +362,10 @@ export default function OrdersPage() {
   };
 
   // Get counts based on what's actually shown (excluding fulfilled on "all" tab)
-  const countsSource = activeTab === "all" 
-    ? orders.filter(order => order.status !== "FULFILLED")
-    : myOrders;
+  const countsSource =
+    activeTab === "all"
+      ? orders.filter((order) => order.status !== "FULFILLED")
+      : myOrders;
   const counts = getOrderCounts(countsSource);
 
   const formatDate = (dateString: string) => {
@@ -281,7 +378,9 @@ export default function OrdersPage() {
 
   const formatPrice = (price: number) => {
     // Remove unnecessary trailing zeros and add HC suffix
-    return price % 1 === 0 ? `${price.toFixed(0)} HC` : `${price.toFixed(3).replace(/\.?0+$/, '')} HC`;
+    return price % 1 === 0
+      ? `${price.toFixed(0)} HC`
+      : `${price.toFixed(3).replace(/\.?0+$/, "")} HC`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -350,7 +449,7 @@ export default function OrdersPage() {
     if (order.orderType === "BUY" && order.status === "IN_PROGRESS") {
       return false;
     }
-    
+
     return (
       (order.status === "IN_PROGRESS" || order.status === "READY_TO_TRADE") &&
       currentUser &&
@@ -385,7 +484,7 @@ export default function OrdersPage() {
             View and manage trade orders
           </p>
         </div>
-        <Button asChild size="sm" className="bg-green-800 hover:bg-green-700 text-white">
+        <Button asChild size="sm">
           <Link href="/orders/create">Create Order</Link>
         </Button>
       </div>
@@ -456,19 +555,19 @@ export default function OrdersPage() {
 
       {/* Compact Stats */}
       <div className="flex flex-wrap gap-2 text-xs">
-        <span className="px-2 py-1 bg-green-800 text-white dark:bg-green-700 rounded">
+        <span className="px-2 py-1 bg-green-500/20 text-green-400 border border-green-500/30 rounded">
           Open: {counts.open}
         </span>
-        <span className="px-2 py-1 bg-amber-800 text-white dark:bg-amber-700 rounded">
+        <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded">
           In Progress: {counts.inProgress}
         </span>
-        <span className="px-2 py-1 bg-blue-800 text-white dark:bg-blue-700 rounded">
+        <span className="px-2 py-1 bg-primary/20 text-primary border border-primary/30 rounded">
           Ready: {counts.readyToTrade}
         </span>
-        <span className="px-2 py-1 bg-slate-800 text-white dark:bg-slate-700 rounded">
+        <span className="px-2 py-1 bg-muted text-muted-foreground border border-border rounded">
           Fulfilled: {counts.fulfilled}
         </span>
-        <span className="px-2 py-1 bg-slate-900 text-white dark:bg-slate-800 rounded">
+        <span className="px-2 py-1 bg-secondary text-secondary-foreground border border-border rounded">
           Buy: {counts.buy} | Sell: {counts.sell}
         </span>
       </div>
@@ -486,147 +585,155 @@ export default function OrdersPage() {
               </p>
             </div>
           ) : (
-                         <div className="overflow-x-auto">
-               <table className="w-full text-sm table-fixed">
-                 <colgroup>
-                   <col className="w-48" />
-                   <col className="w-20" />
-                   <col className="w-24" />
-                   <col className="w-24" />
-                   <col className="w-28" />
-                   <col className="w-28" />
-                   <col className="w-32" />
-                   <col className="w-32" />
-                   <col className="w-28" />
-                 </colgroup>
-                 <thead className="border-b bg-muted/50">
-                   <tr>
-                     <th className="text-left px-3 py-2 font-medium">Item & Date</th>
-                     <th className="text-left px-2 py-2 font-medium">Type</th>
-                     <th className="text-left px-2 py-2 font-medium">Status</th>
-                     <th className="text-left px-2 py-2 font-medium">Amount</th>
-                     <th className="text-left px-2 py-2 font-medium">Price/Unit</th>
-                     <th className="text-left px-2 py-2 font-medium">Total</th>
-                     <th className="text-left px-2 py-2 font-medium">Creator</th>
-                     <th className="text-left px-2 py-2 font-medium">Claimer</th>
-                     <th className="text-left px-3 py-2 font-medium">Actions</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {filteredOrders.map((order, index) => (
-                     <tr
-                       key={order.id}
-                       className={`border-b hover:bg-muted/30 ${
-                         index % 2 === 0 ? "bg-background" : "bg-muted/10"
-                       }`}
-                     >
-                       <td className="px-3 py-2">
-                         <div className="font-medium truncate">
-                           T{order.tier} {order.itemName}
-                         </div>
-                         <div className="text-xs text-muted-foreground truncate">
-                           {formatDateTime(order.createdAt)}
-                         </div>
-                       </td>
-                       <td className="px-2 py-2 text-left">
-                         {order.orderType === "BUY" ? (
-                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-800 text-white dark:bg-blue-700 dark:text-white">
-                             Buy
-                           </span>
-                         ) : (
-                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-800 text-white dark:bg-orange-700 dark:text-white">
-                             Sell
-                           </span>
-                         )}
-                       </td>
-                       <td className="px-2 py-2 text-left">
-                         {order.status === "OPEN" && (
-                           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-800 text-white dark:bg-green-700 dark:text-white">
-                             Open
-                           </span>
-                         )}
-                         {order.status === "IN_PROGRESS" && (
-                           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-800 text-white dark:bg-amber-700 dark:text-white">
-                             In Progress
-                           </span>
-                         )}
-                         {order.status === "READY_TO_TRADE" && (
-                           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-blue-800 text-white dark:bg-blue-700 dark:text-white">
-                             Ready
-                           </span>
-                         )}
-                         {order.status === "FULFILLED" && (
-                           <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-slate-800 text-white dark:bg-slate-700 dark:text-white">
-                             Fulfilled
-                           </span>
-                         )}
-                       </td>
-                       <td className="px-2 py-2 text-left font-mono">
-                         {order.amount.toLocaleString()}
-                       </td>
-                       <td className="px-2 py-2 text-left font-mono">
-                         {formatPrice(order.pricePerUnit)}
-                       </td>
-                       <td className="px-2 py-2 text-left font-mono font-medium">
-                         {formatPrice(Math.ceil(order.amount * order.pricePerUnit))}
-                       </td>
-                       <td className="px-2 py-2">
-                         <div className="text-sm truncate">
-                           {order.creator.inGameName || order.creator.discordName}
-                         </div>
-                       </td>
-                       <td className="px-2 py-2">
-                         <div className="text-sm truncate">
-                           {order.claimer
-                             ? order.claimer.inGameName || order.claimer.discordName
-                             : "-"}
-                         </div>
-                       </td>
-                       <td className="px-3 py-2">
-                         <div className="flex gap-1 justify-start">
-                           {canClaimOrder(order) && (
-                             <Button
-                               size="sm"
-                               onClick={() => handleClaimOrder(order.id)}
-                               className="h-6 w-20 text-xs px-2 py-1 bg-blue-800 hover:bg-blue-700 text-white"
-                             >
-                               Claim
-                             </Button>
-                           )}
-                           {canMarkReady(order) && (
-                             <Button
-                               size="sm"
-                               onClick={() => handleMarkReady(order.id)}
-                               className="h-6 w-20 text-xs px-2 py-1 bg-amber-800 hover:bg-amber-700 text-white"
-                             >
-                               Ready
-                             </Button>
-                           )}
-                           {canCompleteOrder(order) && (
-                             <Button
-                               size="sm"
-                               onClick={() => handleCompleteOrder(order.id)}
-                               className="h-6 w-20 text-xs px-2 py-1 bg-green-800 hover:bg-green-700 text-white"
-                             >
-                               Complete
-                             </Button>
-                           )}
-                           {canDeleteOrder(order) && (
-                             <Button
-                               size="sm"
-                               onClick={() => handleDeleteOrder(order.id)}
-                               className="h-6 w-20 text-xs px-2 py-1 bg-red-800 hover:bg-red-700 text-white"
-                             >
-                               Delete
-                             </Button>
-                           )}
-                         </div>
-                       </td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
-             </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm table-fixed">
+                <colgroup>
+                  <col className="w-48" />
+                  <col className="w-20" />
+                  <col className="w-24" />
+                  <col className="w-24" />
+                  <col className="w-28" />
+                  <col className="w-28" />
+                  <col className="w-32" />
+                  <col className="w-32" />
+                  <col className="w-28" />
+                </colgroup>
+                <thead className="border-b bg-muted/50">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-medium">
+                      Item & Date
+                    </th>
+                    <th className="text-left px-2 py-2 font-medium">Type</th>
+                    <th className="text-left px-2 py-2 font-medium">Status</th>
+                    <th className="text-left px-2 py-2 font-medium">Amount</th>
+                    <th className="text-left px-2 py-2 font-medium">
+                      Price/Unit
+                    </th>
+                    <th className="text-left px-2 py-2 font-medium">Total</th>
+                    <th className="text-left px-2 py-2 font-medium">Creator</th>
+                    <th className="text-left px-2 py-2 font-medium">Claimer</th>
+                    <th className="text-left px-3 py-2 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.map((order, index) => (
+                    <tr
+                      key={order.id}
+                      className={`border-b hover:bg-muted/30 ${
+                        index % 2 === 0 ? "bg-background" : "bg-muted/10"
+                      }`}
+                    >
+                      <td className="px-3 py-2">
+                        <div className="font-medium truncate">
+                          T{order.tier} {order.itemName}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {formatDateTime(order.createdAt)}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2 text-left">
+                        {order.orderType === "BUY" ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/20 text-primary border border-primary/30">
+                            Buy
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                            Sell
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-left">
+                        {order.status === "OPEN" && (
+                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                            Open
+                          </span>
+                        )}
+                        {order.status === "IN_PROGRESS" && (
+                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                            In Progress
+                          </span>
+                        )}
+                        {order.status === "READY_TO_TRADE" && (
+                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-primary/20 text-primary border border-primary/30">
+                            Ready
+                          </span>
+                        )}
+                        {order.status === "FULFILLED" && (
+                          <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground border border-border">
+                            Fulfilled
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-left font-mono">
+                        {order.amount.toLocaleString()}
+                      </td>
+                      <td className="px-2 py-2 text-left font-mono">
+                        {formatPrice(order.pricePerUnit)}
+                      </td>
+                      <td className="px-2 py-2 text-left font-mono font-medium">
+                        {formatPrice(
+                          Math.ceil(order.amount * order.pricePerUnit)
+                        )}
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="text-sm truncate">
+                          {order.creator.inGameName ||
+                            order.creator.discordName}
+                        </div>
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="text-sm truncate">
+                          {order.claimer
+                            ? order.claimer.inGameName ||
+                              order.claimer.discordName
+                            : "-"}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex gap-1 justify-start">
+                          {canClaimOrder(order) && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleClaimOrder(order.id)}
+                              className="h-6 w-20 text-xs px-2 py-1 bg-primary/80 hover:bg-primary text-primary-foreground"
+                            >
+                              Claim
+                            </Button>
+                          )}
+                          {canMarkReady(order) && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleMarkReady(order.id)}
+                              className="h-6 w-20 text-xs px-2 py-1 bg-yellow-500/80 hover:bg-yellow-500 text-black"
+                            >
+                              Ready
+                            </Button>
+                          )}
+                          {canCompleteOrder(order) && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleCompleteOrder(order.id)}
+                              className="h-6 w-20 text-xs px-2 py-1 bg-green-500/80 hover:bg-green-500 text-black"
+                            >
+                              Complete
+                            </Button>
+                          )}
+                          {canDeleteOrder(order) && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleDeleteOrder(order.id)}
+                              className="h-6 w-20 text-xs px-2 py-1 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
+                            >
+                              Delete
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>

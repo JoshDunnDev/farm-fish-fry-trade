@@ -100,7 +100,25 @@ export default function CreateOrderPage() {
   }, [status, router]);
 
   if (status === "loading" || pricingLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="container mx-auto px-6 py-8">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Create New Order
+            </h1>
+            <p className="text-muted-foreground">Loading order form...</p>
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center py-8">
+                <p className="text-muted-foreground">Loading pricing data...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   if (!session) {
@@ -403,17 +421,8 @@ export default function CreateOrderPage() {
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={isLoading || !formData.pricePerUnit}
-                  className="bg-green-800 hover:bg-green-700 text-white"
-                >
-                  {isLoading
-                    ? "Creating..."
-                    : `Create ${
-                        formData.orderType.charAt(0).toUpperCase() +
-                        formData.orderType.slice(1).toLowerCase()
-                      } Order`}
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? "Creating..." : "Create Order"}
                 </Button>
               </div>
             </form>

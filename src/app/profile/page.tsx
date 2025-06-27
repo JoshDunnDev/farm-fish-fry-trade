@@ -95,7 +95,9 @@ export default function ProfilePage() {
                   src={session.user?.image || ""}
                   alt={session.user?.name || ""}
                 />
-                <AvatarFallback>{session.user?.name?.[0] || "U"}</AvatarFallback>
+                <AvatarFallback>
+                  {session.user?.name?.[0] || "U"}
+                </AvatarFallback>
               </Avatar>
               <div>
                 <p className="text-lg font-medium">{session.user?.name}</p>
@@ -160,11 +162,7 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                className="bg-green-800 hover:bg-green-700 text-white"
-              >
+              <Button type="submit" disabled={isLoading}>
                 {isLoading ? "Updating..." : "Update Profile"}
               </Button>
             </form>

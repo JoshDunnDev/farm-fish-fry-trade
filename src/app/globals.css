@@ -5,26 +5,31 @@
 @layer base {
   :root {
     /* Discord-like dark theme as default */
-    --background: 220 13% 18%; /* #2f3136 */
-    --foreground: 210 11% 96%; /* #dcddde */
-    --card: 223 7% 20%; /* #36393f */
-    --card-foreground: 210 11% 96%; /* #dcddde */
-    --popover: 223 7% 20%; /* #36393f */
-    --popover-foreground: 210 11% 96%; /* #dcddde */
+    --background: 222 13% 19%; /* #2f3136 */
+    --foreground: 220 9% 86%; /* #dcddde */
+    --card: 220 13% 22%; /* #36393f */
+    --card-foreground: 220 9% 86%; /* #dcddde */
+    --popover: 220 13% 22%; /* #36393f */
+    --popover-foreground: 220 9% 86%; /* #dcddde */
     --primary: 235 86% 65%; /* #5865f2 Discord blurple */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 220 9% 26%; /* #40444b */
-    --secondary-foreground: 210 11% 96%;
-    --muted: 220 9% 26%; /* #40444b */
-    --muted-foreground: 220 9% 46%; /* #72767d */
-    --accent: 220 9% 26%; /* #40444b */
-    --accent-foreground: 210 11% 96%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 220 13% 25%; /* #40444b */
+    --secondary-foreground: 220 9% 86%;
+    --muted: 220 13% 25%; /* #40444b */
+    --muted-foreground: 220 5% 48%; /* #72767d */
+    --accent: 220 13% 25%; /* #40444b */
+    --accent-foreground: 220 9% 86%;
     --destructive: 359 82% 59%; /* #ed4245 Discord red */
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 9% 26%; /* #40444b */
-    --input: 220 9% 26%; /* #40444b */
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 13% 25%; /* #40444b */
+    --input: 220 13% 25%; /* #40444b */
     --ring: 235 86% 65%; /* #5865f2 */
     --radius: 0.5rem;
+    --chart-1: 235 86% 65%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
 
   .light {
@@ -48,6 +53,32 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 235 86% 65%;
     --radius: 0.5rem;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 

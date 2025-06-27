@@ -8,15 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/pricing";
+import { PriceHistoryChart } from "@/components/price-history-chart";
 
 interface PricingData {
   lastUpdated: string;
@@ -33,26 +29,29 @@ interface PricingData {
 
 export default function PricingPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTier, setSelectedTier] = useState<string>("all");
   const [pricingData, setPricingData] = useState<PricingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+  const [selectedChart, setSelectedChart] = useState<{
+    itemName: string;
+    tier: number;
+  } | null>(null);
+
   // Fetch pricing data on component mount
   useEffect(() => {
     async function fetchPricingData() {
       try {
         setLoading(true);
-        const response = await fetch('/api/pricing/data');
+        const response = await fetch("/api/pricing/data");
         if (!response.ok) {
-          throw new Error('Failed to fetch pricing data');
+          throw new Error("Failed to fetch pricing data");
         }
         const data = await response.json();
         setPricingData(data);
         setError(null);
       } catch (err) {
-        console.error('Error fetching pricing data:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        console.error("Error fetching pricing data:", err);
+        setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -75,7 +74,7 @@ export default function PricingPage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center text-red-500">
-          <p>Error loading pricing data: {error || 'Unknown error'}</p>
+          <p>Error loading pricing data: {error || "Unknown error"}</p>
         </div>
       </div>
     );
@@ -84,24 +83,25 @@ export default function PricingPage() {
   // Convert pricing data to the format expected by the UI
   const allItems = Object.entries(pricingData.items).map(([name, prices]) => ({
     name,
-    prices
+    prices,
   }));
 
   // Get available tiers
   const allTiers = new Set<number>();
-  Object.values(pricingData.items).forEach(item => {
-    Object.keys(item).forEach(tierKey => {
-      const tier = parseInt(tierKey.replace('tier', ''));
+  Object.values(pricingData.items).forEach((item) => {
+    Object.keys(item).forEach((tierKey) => {
+      const tier = parseInt(tierKey.replace("tier", ""));
       allTiers.add(tier);
     });
   });
   const availableTiers = Array.from(allTiers).sort((a, b) => a - b);
-  
-  // Filter items based on search and tier selection
-  const filteredItems = allItems.filter(item => {
-    const matchesSearch = searchQuery === "" || item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTier = selectedTier === "all" || Object.keys(item.prices).includes(`tier${selectedTier}`);
-    return matchesSearch && matchesTier;
+
+  // Filter items based on search only
+  const filteredItems = allItems.filter((item) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
 
   return (
@@ -116,31 +116,14 @@ export default function PricingPage() {
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <Input
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full"
-          />
-        </div>
-        <div className="w-full sm:w-48">
-          <Select value={selectedTier} onValueChange={setSelectedTier}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by tier" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Tiers</SelectItem>
-              {availableTiers.map((tier) => (
-                <SelectItem key={tier} value={tier.toString()}>
-                  Tier {tier}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Search Filter */}
+      <div className="mb-6">
+        <Input
+          placeholder="Search items..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-md"
+        />
       </div>
 
       {/* Items Table */}
@@ -154,35 +137,69 @@ export default function PricingPage() {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-medium">Item</th>
-                  {availableTiers.map(tier => (
-                    <th key={tier} className="text-left py-3 px-4 font-medium">Tier {tier}</th>
+                  {availableTiers.map((tier) => (
+                    <th
+                      key={tier}
+                      className="text-left py-3 px-4 font-medium min-w-[120px]"
+                    >
+                      Tier {tier}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={availableTiers.length + 1} className="text-center py-8 text-muted-foreground">
+                    <td
+                      colSpan={availableTiers.length + 1}
+                      className="text-center py-8 text-muted-foreground"
+                    >
                       No items found matching your criteria
                     </td>
                   </tr>
                 ) : (
                   filteredItems.map((item, index) => (
-                    <tr key={item.name} className={`border-b ${index % 2 === 0 ? 'bg-muted/20' : ''} hover:bg-muted/30`}>
+                    <tr
+                      key={item.name}
+                      className={`border-b ${
+                        index % 2 === 0 ? "bg-muted/20" : ""
+                      } hover:bg-muted/30`}
+                    >
                       <td className="py-3 px-4 font-medium capitalize">
                         {item.name}
                       </td>
-                      {availableTiers.map(tier => {
+                      {availableTiers.map((tier) => {
                         const tierKey = `tier${tier}`;
                         const price = item.prices[tierKey];
                         return (
-                          <td key={tier} className="py-3 px-4">
+                          <td key={tier} className="py-3 px-4 min-w-[120px]">
                             {price !== undefined ? (
-                              <span className="font-mono text-sm">
-                                {formatPrice(price)}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-xs hover:bg-muted/50"
+                                  onClick={() =>
+                                    setSelectedChart({
+                                      itemName: item.name,
+                                      tier,
+                                    })
+                                  }
+                                  title={`View price history for T${tier} ${
+                                    item.name.charAt(0).toUpperCase() +
+                                    item.name.slice(1)
+                                  }`}
+                                >
+                                  📈
+                                </Button>
+                                <span className="font-mono text-sm whitespace-nowrap">
+                                  {formatPrice(price)}
+                                </span>
+                              </div>
                             ) : (
-                              <span className="text-muted-foreground text-sm">—</span>
+                              <span className="text-muted-foreground text-sm">
+                                —
+                              </span>
                             )}
                           </td>
                         );
@@ -196,6 +213,17 @@ export default function PricingPage() {
         </CardContent>
       </Card>
 
+      {/* Price History Chart */}
+      {selectedChart && (
+        <div className="mt-6">
+          <PriceHistoryChart
+            itemName={selectedChart.itemName}
+            tier={selectedChart.tier}
+            onClose={() => setSelectedChart(null)}
+          />
+        </div>
+      )}
+
       {/* Notes */}
       <div className="mt-6 space-y-2">
         {Object.entries(pricingData.notes).map(([key, note]) => (
@@ -206,4 +234,4 @@ export default function PricingPage() {
       </div>
     </div>
   );
-} 
+}
