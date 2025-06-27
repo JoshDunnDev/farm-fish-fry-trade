@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import fs from 'fs';
-import path from 'path';
-import { reloadPricingData, getPricingMetadata } from '@/lib/pricing';
 
 async function isUserAdmin(email: string): Promise<boolean> {
   try {
@@ -33,13 +30,54 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    const pricingPath = path.join(process.cwd(), 'src/data/pricing.json');
-    const currentData = JSON.parse(fs.readFileSync(pricingPath, 'utf8'));
+    // Fetch pricing data from database
+    const pricingEntries = await prisma.pricing.findMany({
+      orderBy: [
+        { itemName: 'asc' },
+        { tier: 'asc' }
+      ]
+    });
+
+    // Fetch metadata
+    const metadata = await prisma.pricingMetadata.findMany();
+
+    // Transform pricing data to the expected format
+    const items: { [itemName: string]: { [tierKey: string]: number } } = {};
+    
+    pricingEntries.forEach(entry => {
+      if (!items[entry.itemName]) {
+        items[entry.itemName] = {};
+      }
+      items[entry.itemName][`tier${entry.tier}`] = entry.price;
+    });
+
+    // Transform metadata to the expected format
+    const notes: { [key: string]: string } = {};
+    let lastUpdated = new Date().toISOString().split('T')[0];
+    let version = '1.0.0';
+
+    metadata.forEach(meta => {
+      if (meta.key === 'lastUpdated') {
+        lastUpdated = meta.value;
+      } else if (meta.key === 'version') {
+        version = meta.value;
+      } else if (meta.key.startsWith('note_')) {
+        const noteKey = meta.key.replace('note_', '');
+        notes[noteKey] = meta.value;
+      }
+    });
+
+    const currentData = {
+      lastUpdated,
+      version,
+      items,
+      notes
+    };
     
     return NextResponse.json({
       success: true,
       data: currentData,
-      filePath: 'src/data/pricing.json'
+      source: 'database'
     });
   } catch (error) {
     return NextResponse.json({
@@ -63,6 +101,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
+    // Get the admin user
+    const adminUser = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!adminUser) {
+      return NextResponse.json({ error: 'Admin user not found' }, { status: 404 });
+    }
+
     const body = await request.json();
     const { items, lastUpdated, version, notes } = body;
 
@@ -74,22 +121,95 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Create new pricing data
-    const newPricingData = {
-      lastUpdated: lastUpdated || new Date().toISOString().split('T')[0],
-      version: version || "0.1.0",
-      items,
-      notes: notes || {
-        "pricing": "Prices are in Hex Coins (HC) per piece.",
-        "updates": "Update this file and call POST /api/pricing/reload to apply changes without downtime. Changes auto-reload within 30 seconds.",
-        "structure": "Items are organized by name, with prices for each tier.",
-        "hotReload": "Use POST /api/pricing/reload to immediately apply changes, or wait up to 30 seconds for automatic reload."
+    // Use a transaction to update all data atomically
+    await prisma.$transaction(async (tx) => {
+      // Clear existing pricing data
+      await tx.pricing.deleteMany();
+      
+      // Insert new pricing data
+      const pricingEntries = [];
+      for (const [itemName, prices] of Object.entries(items)) {
+        for (const [tierKey, price] of Object.entries(prices as { [key: string]: number })) {
+          const tier = parseInt(tierKey.replace('tier', ''));
+          pricingEntries.push({
+            itemName,
+            tier,
+            price,
+            createdBy: adminUser.id,
+          });
+        }
       }
-    };
 
-    // Write to file
-    const pricingPath = path.join(process.cwd(), 'src/data/pricing.json');
-    fs.writeFileSync(pricingPath, JSON.stringify(newPricingData, null, 2));
+      if (pricingEntries.length > 0) {
+        await tx.pricing.createMany({
+          data: pricingEntries,
+        });
+      }
+
+      // Update metadata
+      await tx.pricingMetadata.deleteMany();
+      
+      const metadataEntries = [
+        { key: 'lastUpdated', value: lastUpdated || new Date().toISOString().split('T')[0] },
+        { key: 'version', value: version || '1.0.0' },
+      ];
+
+      // Add notes
+      if (notes && typeof notes === 'object') {
+        Object.entries(notes).forEach(([key, value]) => {
+          metadataEntries.push({
+            key: `note_${key}`,
+            value: value as string,
+          });
+        });
+      }
+
+      await tx.pricingMetadata.createMany({
+        data: metadataEntries,
+      });
+    });
+
+    // Fetch the updated data to return
+    const updatedPricingEntries = await prisma.pricing.findMany({
+      orderBy: [
+        { itemName: 'asc' },
+        { tier: 'asc' }
+      ]
+    });
+
+    const updatedMetadata = await prisma.pricingMetadata.findMany();
+
+    // Transform back to expected format
+    const updatedItems: { [itemName: string]: { [tierKey: string]: number } } = {};
+    
+    updatedPricingEntries.forEach(entry => {
+      if (!updatedItems[entry.itemName]) {
+        updatedItems[entry.itemName] = {};
+      }
+      updatedItems[entry.itemName][`tier${entry.tier}`] = entry.price;
+    });
+
+    const updatedNotes: { [key: string]: string } = {};
+    let updatedLastUpdated = new Date().toISOString().split('T')[0];
+    let updatedVersion = '1.0.0';
+
+    updatedMetadata.forEach(meta => {
+      if (meta.key === 'lastUpdated') {
+        updatedLastUpdated = meta.value;
+      } else if (meta.key === 'version') {
+        updatedVersion = meta.value;
+      } else if (meta.key.startsWith('note_')) {
+        const noteKey = meta.key.replace('note_', '');
+        updatedNotes[noteKey] = meta.value;
+      }
+    });
+
+    const newPricingData = {
+      lastUpdated: updatedLastUpdated,
+      version: updatedVersion,
+      items: updatedItems,
+      notes: updatedNotes
+    };
 
     return NextResponse.json({
       success: true,
@@ -99,6 +219,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    console.error('Error updating pricing data:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -106,7 +227,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Update specific item prices
+// PUT - Update specific item prices (keeping for backward compatibility)
 export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -120,6 +241,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
+    const adminUser = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    });
+
+    if (!adminUser) {
+      return NextResponse.json({ error: 'Admin user not found' }, { status: 404 });
+    }
+
     const body = await request.json();
     const { itemName, prices } = body;
 
@@ -130,16 +259,38 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Read current data
-    const pricingPath = path.join(process.cwd(), 'src/data/pricing.json');
-    const currentData = JSON.parse(fs.readFileSync(pricingPath, 'utf8'));
+    // Update pricing for the specific item
+    await prisma.$transaction(async (tx) => {
+      // Remove existing prices for this item
+      await tx.pricing.deleteMany({
+        where: { itemName }
+      });
 
-    // Update the specific item
-    currentData.items[itemName] = prices;
-    currentData.lastUpdated = new Date().toISOString().split('T')[0];
+      // Add new prices for this item
+      const pricingEntries = [];
+      for (const [tierKey, price] of Object.entries(prices as { [key: string]: number })) {
+        const tier = parseInt(tierKey.replace('tier', ''));
+        pricingEntries.push({
+          itemName,
+          tier,
+          price,
+          createdBy: adminUser.id,
+        });
+      }
 
-    // Write back to file
-    fs.writeFileSync(pricingPath, JSON.stringify(currentData, null, 2));
+      if (pricingEntries.length > 0) {
+        await tx.pricing.createMany({
+          data: pricingEntries,
+        });
+      }
+
+      // Update lastUpdated metadata
+      await tx.pricingMetadata.upsert({
+        where: { key: 'lastUpdated' },
+        update: { value: new Date().toISOString().split('T')[0] },
+        create: { key: 'lastUpdated', value: new Date().toISOString().split('T')[0] }
+      });
+    });
 
     return NextResponse.json({
       success: true,

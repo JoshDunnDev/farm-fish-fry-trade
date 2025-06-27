@@ -52,6 +52,7 @@ model User {
   claimedOrders Order[]   @relation("Claimer")
   createdOrders Order[]   @relation("Creator")
   sessions      Session[]
+  createdPricing Pricing[] @relation("PricingCreator")
 
   @@map("users")
 }
@@ -94,4 +95,28 @@ enum OrderStatus {
   IN_PROGRESS
   READY_TO_TRADE
   FULFILLED
+}
+
+model Pricing {
+  id          String   @id @default(cuid())
+  itemName    String
+  tier        Int
+  price       Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String
+  creator     User     @relation("PricingCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@unique([itemName, tier])
+  @@map("pricing")
+}
+
+model PricingMetadata {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("pricing_metadata")
 }

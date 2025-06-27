@@ -12,61 +12,18 @@ export interface PricingData {
   };
 }
 
-// Cache for pricing data (client-side)
-let cachedPricing: PricingData | null = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 30 * 1000; // 30 seconds cache
-
-// Fetch pricing data from API
+// Fetch pricing data from API (no caching needed - database is fast)
 async function fetchPricingData(): Promise<PricingData> {
-  try {
-    const response = await fetch('/api/pricing/data');
-    if (!response.ok) {
-      throw new Error('Failed to fetch pricing data');
-    }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching pricing data:', error);
-    // Fallback to default pricing if API fails
-    return {
-      lastUpdated: new Date().toISOString().split('T')[0],
-      version: "0.1.0",
-      items: {
-        "salt": { "tier1": 4, "tier2": 4, "tier3": 4, "tier4": 4 },
-        "fish": { "tier1": 1.333, "tier2": 1.666, "tier3": 2, "tier4": 2.333 },
-        "bulb": { "tier1": 0.5, "tier2": 0.625, "tier3": 0.75, "tier4": 0.875 }
-      },
-      notes: {
-        "pricing": "Prices are in Hex Coins (HC) per piece.",
-        "updates": "Update this file and call POST /api/pricing/reload to apply changes without downtime. Changes auto-reload within 30 seconds.",
-        "structure": "Items are organized by name, with prices for each tier.",
-        "hotReload": "Use POST /api/pricing/reload to immediately apply changes, or wait up to 30 seconds for automatic reload."
-      }
-    };
+  const response = await fetch('/api/pricing/data');
+  if (!response.ok) {
+    throw new Error('Failed to fetch pricing data');
   }
+  return await response.json();
 }
 
-// Get pricing data with caching
+// Get pricing data
 async function getPricingData(): Promise<PricingData> {
-  const now = Date.now();
-  
-  // Return cached data if it's still fresh
-  if (cachedPricing && (now - lastFetchTime) < CACHE_DURATION) {
-    return cachedPricing;
-  }
-  
-  // Fetch fresh data
-  cachedPricing = await fetchPricingData();
-  lastFetchTime = now;
-  
-  return cachedPricing;
-}
-
-// Force reload pricing data (for API endpoint)
-export async function reloadPricingData(): Promise<PricingData> {
-  cachedPricing = await fetchPricingData();
-  lastFetchTime = Date.now();
-  return cachedPricing;
+  return await fetchPricingData();
 }
 
 // Get price for a specific item and tier
