@@ -7,10 +7,10 @@ import {
   deletePriceWithHistory,
 } from "@/lib/price-history";
 
-async function isUserAdmin(email: string): Promise<boolean> {
+async function isUserAdmin(discordId: string): Promise<boolean> {
   try {
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { discordId },
       select: { isAdmin: true },
     });
     return user?.isAdmin || false;
@@ -25,11 +25,11 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session?.user?.discordId) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const isAdmin = await isUserAdmin(session.user.email);
+    const isAdmin = await isUserAdmin(session.user.discordId);
     if (!isAdmin) {
       return NextResponse.json(
         { error: "Admin access required" },
@@ -99,11 +99,11 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session?.user?.discordId) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const isAdmin = await isUserAdmin(session.user.email);
+    const isAdmin = await isUserAdmin(session.user.discordId);
     if (!isAdmin) {
       return NextResponse.json(
         { error: "Admin access required" },
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
 
     // Get the admin user
     const adminUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { discordId: session.user.discordId },
     });
 
     if (!adminUser) {
@@ -274,11 +274,11 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session?.user?.email) {
+    if (!session?.user?.discordId) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const isAdmin = await isUserAdmin(session.user.email);
+    const isAdmin = await isUserAdmin(session.user.discordId);
     if (!isAdmin) {
       return NextResponse.json(
         { error: "Admin access required" },
@@ -287,7 +287,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const adminUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { discordId: session.user.discordId },
     });
 
     if (!adminUser) {

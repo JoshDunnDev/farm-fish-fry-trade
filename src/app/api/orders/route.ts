@@ -5,6 +5,9 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Force this route to be dynamic
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -18,7 +21,10 @@ export async function GET(request: NextRequest) {
       where.orderType = orderType;
     }
 
-    if (status && ["OPEN", "IN_PROGRESS", "READY_TO_TRADE", "FULFILLED"].includes(status)) {
+    if (
+      status &&
+      ["OPEN", "IN_PROGRESS", "READY_TO_TRADE", "FULFILLED"].includes(status)
+    ) {
       where.status = status;
     }
 
@@ -28,7 +34,7 @@ export async function GET(request: NextRequest) {
       const user = await prisma.user.findUnique({
         where: { discordId: userId },
       });
-      
+
       if (user) {
         where.OR = [{ creatorId: user.id }, { claimerId: user.id }];
       } else {
@@ -61,7 +67,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -135,7 +141,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.email) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

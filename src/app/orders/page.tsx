@@ -116,13 +116,13 @@ export default function OrdersPage() {
 
   const handleClaimOrder = async (orderId: string) => {
     // Optimistic update - immediately update the UI
-    setOrders((prevOrders) =>
-      prevOrders.map((order) =>
-        order.id === orderId
-          ? { ...order, status: "IN_PROGRESS", claimer: currentUser }
-          : order
-      )
-    );
+    const updateOrder = (order: Order) =>
+      order.id === orderId
+        ? { ...order, status: "IN_PROGRESS", claimer: currentUser }
+        : order;
+
+    setOrders((prevOrders) => prevOrders.map(updateOrder));
+    setMyOrders((prevOrders) => prevOrders.map(updateOrder));
 
     try {
       const response = await fetch(`/api/orders/${orderId}/claim`, {
@@ -131,25 +131,25 @@ export default function OrdersPage() {
 
       if (!response.ok) {
         // Revert the optimistic update on error
-        setOrders((prevOrders) =>
-          prevOrders.map((order) =>
-            order.id === orderId
-              ? { ...order, status: "OPEN", claimer: null }
-              : order
-          )
-        );
+        const revertOrder = (order: Order) =>
+          order.id === orderId
+            ? { ...order, status: "OPEN", claimer: null }
+            : order;
+
+        setOrders((prevOrders) => prevOrders.map(revertOrder));
+        setMyOrders((prevOrders) => prevOrders.map(revertOrder));
         const error = await response.json();
         alert(error.error || "Failed to claim order");
       }
     } catch (error) {
       // Revert the optimistic update on error
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId
-            ? { ...order, status: "OPEN", claimer: null }
-            : order
-        )
-      );
+      const revertOrder = (order: Order) =>
+        order.id === orderId
+          ? { ...order, status: "OPEN", claimer: null }
+          : order;
+
+      setOrders((prevOrders) => prevOrders.map(revertOrder));
+      setMyOrders((prevOrders) => prevOrders.map(revertOrder));
       console.error("Error claiming order:", error);
       alert("Failed to claim order");
     }
@@ -157,17 +157,17 @@ export default function OrdersPage() {
 
   const handleCompleteOrder = async (orderId: string) => {
     // Optimistic update - immediately update the UI
-    setOrders((prevOrders) =>
-      prevOrders.map((order) =>
-        order.id === orderId
-          ? {
-              ...order,
-              status: "FULFILLED",
-              fulfilledAt: new Date().toISOString(),
-            }
-          : order
-      )
-    );
+    const updateOrder = (order: Order) =>
+      order.id === orderId
+        ? {
+            ...order,
+            status: "FULFILLED",
+            fulfilledAt: new Date().toISOString(),
+          }
+        : order;
+
+    setOrders((prevOrders) => prevOrders.map(updateOrder));
+    setMyOrders((prevOrders) => prevOrders.map(updateOrder));
 
     try {
       const response = await fetch(`/api/orders/${orderId}/complete`, {
@@ -176,25 +176,25 @@ export default function OrdersPage() {
 
       if (!response.ok) {
         // Revert the optimistic update on error
-        setOrders((prevOrders) =>
-          prevOrders.map((order) =>
-            order.id === orderId
-              ? { ...order, status: "READY_TO_TRADE", fulfilledAt: undefined }
-              : order
-          )
-        );
+        const revertOrder = (order: Order) =>
+          order.id === orderId
+            ? { ...order, status: "READY_TO_TRADE", fulfilledAt: undefined }
+            : order;
+
+        setOrders((prevOrders) => prevOrders.map(revertOrder));
+        setMyOrders((prevOrders) => prevOrders.map(revertOrder));
         const error = await response.json();
         alert(error.error || "Failed to complete order");
       }
     } catch (error) {
       // Revert the optimistic update on error
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId
-            ? { ...order, status: "READY_TO_TRADE", fulfilledAt: undefined }
-            : order
-        )
-      );
+      const revertOrder = (order: Order) =>
+        order.id === orderId
+          ? { ...order, status: "READY_TO_TRADE", fulfilledAt: undefined }
+          : order;
+
+      setOrders((prevOrders) => prevOrders.map(revertOrder));
+      setMyOrders((prevOrders) => prevOrders.map(revertOrder));
       console.error("Error completing order:", error);
       alert("Failed to complete order");
     }
@@ -202,11 +202,11 @@ export default function OrdersPage() {
 
   const handleMarkReady = async (orderId: string) => {
     // Optimistic update - immediately update the UI
-    setOrders((prevOrders) =>
-      prevOrders.map((order) =>
-        order.id === orderId ? { ...order, status: "READY_TO_TRADE" } : order
-      )
-    );
+    const updateOrder = (order: Order) =>
+      order.id === orderId ? { ...order, status: "READY_TO_TRADE" } : order;
+
+    setOrders((prevOrders) => prevOrders.map(updateOrder));
+    setMyOrders((prevOrders) => prevOrders.map(updateOrder));
 
     try {
       const response = await fetch(`/api/orders/${orderId}/ready`, {
@@ -215,21 +215,21 @@ export default function OrdersPage() {
 
       if (!response.ok) {
         // Revert the optimistic update on error
-        setOrders((prevOrders) =>
-          prevOrders.map((order) =>
-            order.id === orderId ? { ...order, status: "IN_PROGRESS" } : order
-          )
-        );
+        const revertOrder = (order: Order) =>
+          order.id === orderId ? { ...order, status: "IN_PROGRESS" } : order;
+
+        setOrders((prevOrders) => prevOrders.map(revertOrder));
+        setMyOrders((prevOrders) => prevOrders.map(revertOrder));
         const error = await response.json();
         alert(error.error || "Failed to mark order as ready");
       }
     } catch (error) {
       // Revert the optimistic update on error
-      setOrders((prevOrders) =>
-        prevOrders.map((order) =>
-          order.id === orderId ? { ...order, status: "IN_PROGRESS" } : order
-        )
-      );
+      const revertOrder = (order: Order) =>
+        order.id === orderId ? { ...order, status: "IN_PROGRESS" } : order;
+
+      setOrders((prevOrders) => prevOrders.map(revertOrder));
+      setMyOrders((prevOrders) => prevOrders.map(revertOrder));
       console.error("Error marking order as ready:", error);
       alert("Failed to mark order as ready");
     }
@@ -242,9 +242,13 @@ export default function OrdersPage() {
 
     // Store the order for potential restoration
     const orderToDelete = orders.find((order) => order.id === orderId);
+    const myOrderToDelete = myOrders.find((order) => order.id === orderId);
 
     // Optimistic update - immediately remove from UI
     setOrders((prevOrders) =>
+      prevOrders.filter((order) => order.id !== orderId)
+    );
+    setMyOrders((prevOrders) =>
       prevOrders.filter((order) => order.id !== orderId)
     );
 
@@ -264,6 +268,15 @@ export default function OrdersPage() {
             )
           );
         }
+        if (myOrderToDelete) {
+          setMyOrders((prevOrders) =>
+            [...prevOrders, myOrderToDelete].sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            )
+          );
+        }
         const error = await response.json();
         alert(error.error || "Failed to delete order");
       }
@@ -272,6 +285,14 @@ export default function OrdersPage() {
       if (orderToDelete) {
         setOrders((prevOrders) =>
           [...prevOrders, orderToDelete].sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        );
+      }
+      if (myOrderToDelete) {
+        setMyOrders((prevOrders) =>
+          [...prevOrders, myOrderToDelete].sort(
             (a, b) =>
               new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
           )

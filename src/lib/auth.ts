@@ -8,7 +8,6 @@ declare module "next-auth" {
     user: {
       id: string;
       name?: string | null;
-      email?: string | null;
       image?: string | null;
       discordId?: string;
       discordName?: string;
@@ -33,7 +32,6 @@ interface DiscordProfile {
   username: string;
   discriminator: string;
   avatar?: string;
-  email?: string;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -41,6 +39,11 @@ export const authOptions: NextAuthOptions = {
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: "identify",
+        },
+      },
     }),
   ],
   callbacks: {
@@ -58,14 +61,12 @@ export const authOptions: NextAuthOptions = {
             update: {
               discordName: discordProfile.username,
               name: discordProfile.username,
-              ...(discordProfile.email && { email: discordProfile.email }),
               ...(profile.image && { image: profile.image }),
             },
             create: {
               discordId: discordProfile.id,
               discordName: discordProfile.username,
               name: discordProfile.username,
-              email: discordProfile.email,
               image: profile.image,
               inGameName: null,
             },
