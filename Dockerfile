@@ -13,27 +13,30 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
+# Install dependencies with cache mount
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production && npm cache clean --force
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --only=production && npm cache clean --force
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
 
-# Install all dependencies (including dev dependencies) for building
+# Install all dependencies with cache mount
 COPY package.json package-lock.json* ./
-RUN npm ci && npm cache clean --force
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci && npm cache clean --force
 
 COPY . .
 
 # Create public directory if it doesn't exist
 RUN mkdir -p public
 
-# Generate Prisma client and build the application
-RUN npx prisma generate && npm run build
+# Generate Prisma client and build with cache
+RUN --mount=type=cache,target=/tmp/.buildcache \
+    npx prisma generate && npm run build
 
-# Production image, copy all the files and run next
+# Production image
 FROM base AS runner
 WORKDIR /app
 
@@ -49,11 +52,11 @@ RUN apt-get update && apt-get install -y \
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 --gid nodejs nextjs
 
-# Copy production node_modules from deps stage (smaller)
+# Copy production dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 
-# Generate Prisma client in production environment
+# Generate Prisma client in production
 RUN npx prisma generate
 
 # Copy built application
@@ -68,11 +71,9 @@ RUN chmod +x docker-entrypoint.sh
 USER nextjs
 
 EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD curl -f http://localhost:3000/api/health || exit 1
 
