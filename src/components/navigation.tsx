@@ -2,7 +2,9 @@
 
 import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { AuthButton } from "@/components/auth-button";
 
 const authPages = ["/auth/signin", "/setup"];
@@ -10,6 +12,28 @@ const authPages = ["/auth/signin", "/setup"];
 export function Navigation() {
   const { data: session, status } = useSession();
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(true);
+
+  // Check admin status when session is available
+  useEffect(() => {
+    async function checkAdminStatus() {
+      if (session?.user) {
+        try {
+          const response = await fetch('/api/admin/auth');
+          const data = await response.json();
+          setIsAdmin(data.isAdmin);
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+        }
+      }
+      setAdminLoading(false);
+    }
+
+    if (status !== "loading") {
+      checkAdminStatus();
+    }
+  }, [session, status]);
 
   // Don't show navigation on auth pages
   if (authPages.includes(pathname)) {
@@ -103,7 +127,20 @@ export function Navigation() {
             </Link>
           </div>
         </div>
-        <AuthButton />
+        <div className="flex items-center space-x-2">
+          {isAdmin && !adminLoading && (
+            <Link href="/admin/pricing">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className={pathname === "/admin/pricing" ? "bg-muted" : ""}
+              >
+                Admin
+              </Button>
+            </Link>
+          )}
+          <AuthButton />
+        </div>
       </div>
     </nav>
   );

@@ -45,6 +45,7 @@ model User {
   discordId     String?   @unique
   discordName   String?
   inGameName    String?
+  isAdmin       Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]

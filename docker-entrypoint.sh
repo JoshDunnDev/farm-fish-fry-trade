@@ -3,16 +3,35 @@ set -e
 
 echo "🌾🐟🍳 Starting FarmFishFryTrade..."
 
+# Set OpenSSL legacy provider for compatibility
+export OPENSSL_CONF=""
+
 # Wait for database to be ready with retry mechanism
 echo "⏳ Waiting for database to be ready..."
 
-# Function to test database connection
+# Function to test database connection using a simpler approach
 test_db_connection() {
-  npx prisma db push --accept-data-loss --force-reset 2>&1
+  # Use a simpler test that doesn't require writing to engines
+  node -e "
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    prisma.\$connect()
+      .then(() => {
+        console.log('Database connected');
+        return prisma.\$disconnect();
+      })
+      .then(() => {
+        process.exit(0);
+      })
+      .catch((error) => {
+        console.error('Database connection failed:', error.message);
+        process.exit(1);
+      });
+  " 2>/dev/null
 }
 
 # Retry logic
-max_attempts=30
+max_attempts=20
 attempt=1
 
 while [ $attempt -le $max_attempts ]; do
@@ -26,24 +45,23 @@ while [ $attempt -le $max_attempts ]; do
       echo "❌ Failed to connect to database after $max_attempts attempts"
       echo "🔍 Checking environment variables..."
       echo "DATABASE_URL is set: $([ -n "$DATABASE_URL" ] && echo "Yes" || echo "No")"
-      echo "DATABASE_URL value: $DATABASE_URL"
       exit 1
     fi
     
-    echo "⏳ Database not ready, waiting 5 seconds..."
-    sleep 5
+    echo "⏳ Database not ready, waiting 3 seconds..."
+    sleep 3
     attempt=$((attempt + 1))
   fi
 done
 
-# Generate Prisma client
-echo "🔧 Generating Prisma client..."
-npx prisma generate
+# Run database migrations (try but don't fail if it doesn't work)
+echo "🗃️  Running database migrations..."
+npx prisma db push --accept-data-loss 2>/dev/null || echo "⚠️  Migration skipped (may already be up to date)"
 
 # Seed database if requested
 if [ "$SEED_DATABASE" = "true" ]; then
   echo "🌱 Seeding database..."
-  npx prisma db seed || echo "⚠️  Seeding failed or no seed script available"
+  npx prisma db seed 2>/dev/null || echo "⚠️  Seeding skipped"
 fi
 
 echo "🚀 Starting application..."

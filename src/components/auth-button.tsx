@@ -1,6 +1,7 @@
 "use client";
 
 import { useSession, signIn, signOut } from "next-auth/react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -14,6 +15,26 @@ import {
 
 export function AuthButton() {
   const { data: session, status } = useSession();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check admin status when session is available
+  useEffect(() => {
+    async function checkAdminStatus() {
+      if (session?.user) {
+        try {
+          const response = await fetch('/api/admin/auth');
+          const data = await response.json();
+          setIsAdmin(data.isAdmin);
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+        }
+      }
+    }
+
+    if (status !== "loading") {
+      checkAdminStatus();
+    }
+  }, [session, status]);
 
   if (status === "loading") {
     return <Button disabled>Loading...</Button>;
@@ -53,6 +74,14 @@ export function AuthButton() {
         <DropdownMenuItem asChild>
           <a href="/profile">Profile</a>
         </DropdownMenuItem>
+        {isAdmin && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <a href="/admin/pricing">Admin Panel</a>
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signOut()}>Sign out</DropdownMenuItem>
       </DropdownMenuContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -16,21 +16,86 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { 
-  getAllItems, 
-  searchItems, 
-  getAvailableTiers, 
-  formatPrice,
-  getPricingMetadata
-} from "@/lib/pricing";
+import { formatPrice } from "@/lib/pricing";
+
+interface PricingData {
+  lastUpdated: string;
+  version: string;
+  items: {
+    [itemName: string]: {
+      [tierKey: string]: number;
+    };
+  };
+  notes: {
+    [key: string]: string;
+  };
+}
 
 export default function PricingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTier, setSelectedTier] = useState<string>("all");
+  const [pricingData, setPricingData] = useState<PricingData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  const allItems = getAllItems();
-  const availableTiers = getAvailableTiers();
-  const metadata = getPricingMetadata();
+  // Fetch pricing data on component mount
+  useEffect(() => {
+    async function fetchPricingData() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/pricing/data');
+        if (!response.ok) {
+          throw new Error('Failed to fetch pricing data');
+        }
+        const data = await response.json();
+        setPricingData(data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching pricing data:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPricingData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <p>Loading pricing data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !pricingData) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center text-red-500">
+          <p>Error loading pricing data: {error || 'Unknown error'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Convert pricing data to the format expected by the UI
+  const allItems = Object.entries(pricingData.items).map(([name, prices]) => ({
+    name,
+    prices
+  }));
+
+  // Get available tiers
+  const allTiers = new Set<number>();
+  Object.values(pricingData.items).forEach(item => {
+    Object.keys(item).forEach(tierKey => {
+      const tier = parseInt(tierKey.replace('tier', ''));
+      allTiers.add(tier);
+    });
+  });
+  const availableTiers = Array.from(allTiers).sort((a, b) => a - b);
   
   // Filter items based on search and tier selection
   const filteredItems = allItems.filter(item => {
@@ -47,7 +112,7 @@ export default function PricingPage() {
           Current market prices for BitCraft items across different tiers
         </p>
         <p className="text-sm text-muted-foreground mt-2">
-          Last updated: {metadata.lastUpdated} • Version {metadata.version}
+          Last updated: {pricingData.lastUpdated}
         </p>
       </div>
 
@@ -133,7 +198,7 @@ export default function PricingPage() {
 
       {/* Notes */}
       <div className="mt-6 space-y-2">
-        {Object.entries(metadata.notes).map(([key, note]) => (
+        {Object.entries(pricingData.notes).map(([key, note]) => (
           <p key={key} className="text-sm text-muted-foreground">
             <strong className="capitalize">{key}:</strong> {note}
           </p>

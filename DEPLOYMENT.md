@@ -42,6 +42,7 @@ This guide explains how to deploy FarmFishFryTrade to production using Docker an
    DISCORD_CLIENT_ID=your_discord_client_id
    DISCORD_CLIENT_SECRET=your_discord_client_secret
    SEED_DATABASE=false
+   ADMIN_SECRET=your-admin-secret-change-in-production
    ```
 
 4. **Deploy the stack**
@@ -93,8 +94,11 @@ server {
 | `DISCORD_CLIENT_ID` | Discord OAuth Client ID | **Yes** | `your_client_id` |
 | `DISCORD_CLIENT_SECRET` | Discord OAuth Client Secret | **Yes** | `your_client_secret` |
 | `SEED_DATABASE` | Seed database on startup | **Yes** | `false` |
+| `ADMIN_SECRET` | Admin API secret for price updates | **Yes** | `your-admin-secret` |
 
 ## Updating the Application
+
+### Code Updates (Requires Downtime)
 
 To update to a new version:
 
@@ -106,6 +110,35 @@ To update to a new version:
    - Rebuild the Docker image
    - Run database migrations
    - Restart with zero downtime
+
+### Price Updates (Zero Downtime) 🚀
+
+#### Option 1: Web Admin Interface (Recommended)
+1. Visit `http://your-domain:7854/admin/pricing`
+2. Enter your `ADMIN_SECRET`
+3. Update prices directly in the web interface
+4. Changes apply immediately without downtime
+
+#### Option 2: API Calls
+```bash
+# Update a specific item's prices
+curl -X PUT http://your-domain:7854/api/admin/pricing \
+  -H "Content-Type: application/json" \
+  -H "X-Admin-Secret: your-admin-secret" \
+  -d '{
+    "itemName": "fish",
+    "prices": {
+      "tier1": 1.5,
+      "tier2": 2.0,
+      "tier3": 2.5,
+      "tier4": 3.0
+    }
+  }'
+
+# View current pricing data
+curl -H "X-Admin-Secret: your-admin-secret" \
+  http://your-domain:7854/api/admin/pricing
+```
 
 ## Backup and Restore
 

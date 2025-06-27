@@ -1,6 +1,5 @@
 import { NextAuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "./prisma";
 
 // Extend the built-in session types
@@ -14,6 +13,7 @@ declare module "next-auth" {
       discordId?: string;
       discordName?: string;
       inGameName?: string | null;
+      isAdmin?: boolean;
     };
   }
 }
@@ -23,6 +23,7 @@ declare module "next-auth/jwt" {
     discordId?: string;
     discordName?: string;
     inGameName?: string | null;
+    isAdmin?: boolean;
   }
 }
 
@@ -57,13 +58,15 @@ export const authOptions: NextAuthOptions = {
             update: {
               discordName: discordProfile.username,
               name: discordProfile.username,
+              ...(discordProfile.email && { email: discordProfile.email }),
               ...(profile.image && { image: profile.image }),
             },
             create: {
               discordId: discordProfile.id,
               discordName: discordProfile.username,
               name: discordProfile.username,
-              ...(profile.image && { image: profile.image }),
+              email: discordProfile.email,
+              image: profile.image,
               inGameName: null,
             },
           });
@@ -80,13 +83,14 @@ export const authOptions: NextAuthOptions = {
         session.user.discordId = token.discordId as string;
         session.user.discordName = token.discordName as string;
 
-        // Get latest user data from database to include inGameName
+        // Get latest user data from database to include inGameName and admin status
         try {
           const dbUser = await prisma.user.findUnique({
             where: { discordId: token.discordId as string },
           });
           if (dbUser) {
             session.user.inGameName = dbUser.inGameName;
+            session.user.isAdmin = dbUser.isAdmin || false;
             token.inGameName = dbUser.inGameName; // Also update token for middleware
           }
         } catch (error) {
