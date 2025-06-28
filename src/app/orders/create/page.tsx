@@ -188,14 +188,16 @@ export default function CreateOrderPage() {
       });
 
       if (response.ok) {
+        // Keep loading state active during redirect
         router.push("/orders");
+        return; // Don't set loading to false on success
       } else {
         const errorText = await response.text();
         setError(errorText || "Failed to create order");
+        setIsLoading(false);
       }
     } catch (error: any) {
       setError("Failed to create order");
-    } finally {
       setIsLoading(false);
     }
   };

@@ -64,8 +64,12 @@ export function PriceHistoryChart({
   useEffect(() => {
     async function fetchPriceHistory() {
       try {
-        setLoading(true);
+        // Only show loading state on initial load
+        if (data === null) {
+          setLoading(true);
+        }
         setError(null);
+
         const response = await fetch(
           `/api/pricing/history?itemName=${encodeURIComponent(
             itemName
@@ -81,7 +85,10 @@ export function PriceHistoryChart({
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
-        setLoading(false);
+        // Only clear loading on initial load
+        if (data === null) {
+          setLoading(false);
+        }
       }
     }
 
@@ -268,7 +275,11 @@ export function PriceHistoryChart({
                 r: 4,
                 fillOpacity: 1,
               }}
-              activeDot={{ r: 6, strokeWidth: 0, fill: "hsl(var(--chart-1))" }}
+              activeDot={{
+                r: 6,
+                strokeWidth: 0,
+                fill: "hsl(var(--chart-1))",
+              }}
               isAnimationActive={false}
             />
           </AreaChart>
