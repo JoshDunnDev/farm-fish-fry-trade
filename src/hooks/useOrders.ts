@@ -52,10 +52,11 @@ interface UseOrdersReturn {
   refetch: () => void;
   updateOrder: (orderId: string, updates: Partial<Order>) => void;
   removeOrder: (orderId: string) => void;
+  refreshSession: () => Promise<void>;
 }
 
 export function useOrders(): UseOrdersReturn {
-  const { session, status } = useSessionContext();
+  const { session, status, update } = useSessionContext();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -75,12 +76,11 @@ export function useOrders(): UseOrdersReturn {
         isLoadingRef.current = true;
         setLoading(pageNum === 1);
 
-        // Single optimized API call with pagination and user data
+        // Get ALL orders (don't filter by user) and get current user data separately
         const params = new URLSearchParams({
           page: pageNum.toString(),
           limit: "50",
           includeUserData: "true",
-          ...(session.user.id && { userId: session.user.id }),
         });
 
         const response = await fetch(`/api/orders?${params}`);
@@ -97,8 +97,20 @@ export function useOrders(): UseOrdersReturn {
           setTotalCount(data.totalCount);
           setPage(pageNum);
 
+          // Get current user data by making a separate request if not included
           if (data.currentUser) {
             setCurrentUser(data.currentUser);
+          } else {
+            // Fetch current user data separately
+            try {
+              const userResponse = await fetch(`/api/user`);
+              if (userResponse.ok) {
+                const userData = await userResponse.json();
+                setCurrentUser(userData);
+              }
+            } catch (error) {
+              console.error("Error fetching user data:", error);
+            }
           }
         }
       } catch (error) {
@@ -149,6 +161,16 @@ export function useOrders(): UseOrdersReturn {
     setOrders((prev) => prev.filter((order) => order.id !== orderId));
   }, []);
 
+  const refreshSession = useCallback(async () => {
+    try {
+      await update();
+      // After session update, refetch orders to get updated user data
+      refetch();
+    } catch (error) {
+      console.error("Error refreshing session:", error);
+    }
+  }, [update, refetch]);
+
   return {
     orders,
     loading,
@@ -162,5 +184,6 @@ export function useOrders(): UseOrdersReturn {
     refetch,
     updateOrder,
     removeOrder,
+    refreshSession,
   };
 }

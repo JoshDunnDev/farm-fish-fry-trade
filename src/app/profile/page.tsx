@@ -13,18 +13,29 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useProfile } from "@/hooks/useProfile";
 import { useSessionContext } from "@/contexts/SessionContext";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { session, status } = useSessionContext();
   const { inGameName, setInGameName, isLoading, message, updateProfile } =
     useProfile();
 
+  // Handle authentication redirect
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+    }
+  }, [status, router]);
+
   if (status === "loading") {
-    return <div>Loading...</div>;
+    return <LoadingSpinner message="Loading your profile..." />;
   }
 
   if (!session) {
-    return null;
+    return <LoadingSpinner message="Redirecting to sign in..." />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,8 +132,19 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Updating..." : "Update Profile"}
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="min-w-[120px]"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Updating...
+                  </>
+                ) : (
+                  "Update Profile"
+                )}
               </Button>
             </form>
           </CardContent>

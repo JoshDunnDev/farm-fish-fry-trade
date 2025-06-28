@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 
 interface Order {
   id: string;
@@ -73,6 +74,7 @@ export default function OrdersPage() {
     loadMore,
     updateOrder,
     removeOrder,
+    refreshSession,
   } = useOrders();
 
   const [activeTab, setActiveTab] = useState<"all" | "my">("all");
@@ -80,39 +82,61 @@ export default function OrdersPage() {
     orderType: "ALL",
     status: "ALL",
   });
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    orderId: string | null;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    orderId: null,
+    isLoading: false,
+  });
 
   // Memoized filtered orders
-  const { filteredOrders, myOrders } = useMemo(() => {
-    const myOrdersList = currentUser
-      ? allOrders.filter(
-          (order) =>
-            order.creator.id === currentUser.id ||
-            order.claimer?.id === currentUser.id
-        )
-      : [];
+  const { filteredOrders, myOrders, allOrdersForDisplay, myOrdersForDisplay } =
+    useMemo(() => {
+      const myOrdersList = currentUser
+        ? allOrders.filter(
+            (order) =>
+              order.creator.id === currentUser.id ||
+              order.claimer?.id === currentUser.id
+          )
+        : [];
 
-    const sourceOrders = activeTab === "all" ? allOrders : myOrdersList;
+      // For tab counts, exclude fulfilled orders from "All" tab
+      const allOrdersForDisplay = allOrders.filter(
+        (order) => order.status !== "FULFILLED"
+      );
+      const myOrdersForDisplay = myOrdersList; // "Mine" tab shows all orders including fulfilled
 
-    const filtered = sourceOrders.filter((order) => {
-      // On "All" tab, exclude fulfilled orders
-      if (activeTab === "all" && order.status === "FULFILLED") {
-        return false;
-      }
+      const sourceOrders = activeTab === "all" ? allOrders : myOrdersList;
 
-      if (
-        filters.orderType !== "ALL" &&
-        order.orderType !== filters.orderType
-      ) {
-        return false;
-      }
-      if (filters.status !== "ALL" && order.status !== filters.status) {
-        return false;
-      }
-      return true;
-    });
+      const filtered = sourceOrders.filter((order) => {
+        // On "All" tab, exclude fulfilled orders
+        if (activeTab === "all" && order.status === "FULFILLED") {
+          return false;
+        }
 
-    return { filteredOrders: filtered, myOrders: myOrdersList };
-  }, [allOrders, currentUser, activeTab, filters]);
+        // Apply status and order type filters
+        if (
+          filters.orderType !== "ALL" &&
+          order.orderType !== filters.orderType
+        ) {
+          return false;
+        }
+        if (filters.status !== "ALL" && order.status !== filters.status) {
+          return false;
+        }
+        return true;
+      });
+
+      return {
+        filteredOrders: filtered,
+        myOrders: myOrdersList,
+        allOrdersForDisplay,
+        myOrdersForDisplay,
+      };
+    }, [allOrders, currentUser, activeTab, filters]);
 
   // Memoized order counts
   const counts = useMemo(() => {
@@ -221,19 +245,29 @@ export default function OrdersPage() {
     }
   };
 
-  const handleDeleteOrder = async (orderId: string) => {
-    if (!confirm("Are you sure you want to delete this order?")) {
-      return;
-    }
+  const handleDeleteOrder = (orderId: string) => {
+    setDeleteModal({
+      isOpen: true,
+      orderId,
+      isLoading: false,
+    });
+  };
+
+  const confirmDeleteOrder = async () => {
+    if (!deleteModal.orderId) return;
+
+    setDeleteModal((prev) => ({ ...prev, isLoading: true }));
 
     // Store the order for potential restoration
-    const orderToDelete = allOrders.find((order) => order.id === orderId);
+    const orderToDelete = allOrders.find(
+      (order) => order.id === deleteModal.orderId
+    );
 
     // Optimistic update - immediately remove from UI
-    removeOrder(orderId);
+    removeOrder(deleteModal.orderId);
 
     try {
-      const response = await fetch(`/api/orders?id=${orderId}`, {
+      const response = await fetch(`/api/orders?id=${deleteModal.orderId}`, {
         method: "DELETE",
       });
 
@@ -244,6 +278,13 @@ export default function OrdersPage() {
         alert(error.error || "Failed to delete order");
         // For now, we'll just refetch the data to restore the order
         window.location.reload();
+      } else {
+        // Success - close modal
+        setDeleteModal({
+          isOpen: false,
+          orderId: null,
+          isLoading: false,
+        });
       }
     } catch (error) {
       console.error("Error deleting order:", error);
@@ -429,7 +470,7 @@ export default function OrdersPage() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            All ({allOrders.length})
+            All ({allOrdersForDisplay.length})
           </button>
           <button
             onClick={() => setActiveTab("my")}
@@ -439,7 +480,7 @@ export default function OrdersPage() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Mine ({myOrders.length})
+            Mine ({myOrdersForDisplay.length})
           </button>
         </div>
 
@@ -698,6 +739,21 @@ export default function OrdersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() =>
+          setDeleteModal({ isOpen: false, orderId: null, isLoading: false })
+        }
+        onConfirm={confirmDeleteOrder}
+        title="Delete Order"
+        description="Are you sure you want to delete this order? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        isLoading={deleteModal.isLoading}
+        variant="destructive"
+      />
     </div>
   );
 }

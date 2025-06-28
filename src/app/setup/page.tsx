@@ -16,31 +16,45 @@ import { useRouter } from "next/navigation";
 import { useSessionContext } from "@/contexts/SessionContext";
 
 export default function SetupPage() {
-  const { session, update } = useSessionContext();
+  const { session, status, update } = useSessionContext();
   const router = useRouter();
   const [inGameName, setInGameName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Handle redirects in useEffect to avoid render cycle issues
   useEffect(() => {
+    if (status === "loading") return;
+
     if (!session) {
       router.push("/auth/signin");
       return;
     }
 
-    // If user already has an in-game name, redirect to home
     if (session.user?.inGameName) {
-      router.push("/");
+      router.push("/orders");
       return;
     }
-  }, [session, router]);
+  }, [session, status, router]);
 
-  if (!session) {
-    return null;
+  // Show loading while session is loading
+  if (status === "loading") {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center p-4 bg-background">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  // If user already has an in-game name, don't render the form
-  if (session.user?.inGameName) {
+  // Don't render anything if not authenticated or if user already has in-game name
+  if (!session || session.user?.inGameName) {
     return null;
   }
 
@@ -68,14 +82,14 @@ export default function SetupPage() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Profile updated successfully:", result);
 
-        // Update the session to reflect the new in-game name
-        const updatedSession = await update();
-        console.log("Session updated:", updatedSession);
+        // Update the session to refresh the JWT token with the new in-game name
+        await update();
 
-        // Force a hard redirect to ensure fresh session data
-        window.location.href = "/";
+        // Navigate to orders page - defer to avoid render cycle issues
+        setTimeout(() => {
+          router.push("/orders");
+        }, 0);
       } else {
         const errorData = await response.json();
         setError(errorData.error || "Failed to save in-game name");

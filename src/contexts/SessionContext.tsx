@@ -81,6 +81,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, [session, status]);
 
+  // Listen for admin status changes (from admin access page)
+  useEffect(() => {
+    const handleAdminStatusChanged = () => {
+      // Force a fresh admin check
+      hasCheckedAdminRef.current = false;
+      lastSessionIdRef.current = null;
+      if (session?.user) {
+        checkAdminStatus();
+      }
+    };
+
+    window.addEventListener("adminStatusChanged", handleAdminStatusChanged);
+
+    return () => {
+      window.removeEventListener(
+        "adminStatusChanged",
+        handleAdminStatusChanged
+      );
+    };
+  }, [session]);
+
   const value = {
     session,
     status,

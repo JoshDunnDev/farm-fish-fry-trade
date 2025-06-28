@@ -80,10 +80,10 @@ export default function AdminAccessPage() {
         setMessage("Admin access granted! Redirecting...");
         // Trigger admin status change event for other components
         window.dispatchEvent(new CustomEvent("adminStatusChanged"));
-        // Redirect to admin pricing page
+        // Redirect to admin pricing page with a shorter delay
         setTimeout(() => {
           router.push("/admin/pricing");
-        }, 1000);
+        }, 300);
       } else {
         setMessage(data.error || "Invalid password");
       }

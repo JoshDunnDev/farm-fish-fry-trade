@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // Force this route to be dynamic
 export const dynamic = "force-dynamic";
@@ -17,6 +15,9 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const includeUserData = searchParams.get("includeUserData") === "true";
+
+    // Get session to identify current user for user data
+    const session = await getServerSession(authOptions);
 
     // Calculate offset for pagination
     const offset = (page - 1) * limit;
@@ -35,10 +36,25 @@ export async function GET(request: NextRequest) {
     }
 
     let currentUser = null;
+
+    // Get current user data if requested, regardless of filtering
+    if (includeUserData && session?.user?.id) {
+      currentUser = await prisma.user.findUnique({
+        where: { discordId: session.user.id },
+        select: {
+          id: true,
+          discordId: true,
+          discordName: true,
+          inGameName: true,
+        },
+      });
+    }
+
+    // Only filter orders by user if userId is specifically provided
     if (userId) {
       // The userId parameter is actually the Discord ID from the session
       // We need to find the user's database ID first
-      currentUser = await prisma.user.findUnique({
+      const filterUser = await prisma.user.findUnique({
         where: { discordId: userId },
         select: {
           id: true,
@@ -48,17 +64,14 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      if (currentUser) {
-        where.OR = [
-          { creatorId: currentUser.id },
-          { claimerId: currentUser.id },
-        ];
+      if (filterUser) {
+        where.OR = [{ creatorId: filterUser.id }, { claimerId: filterUser.id }];
       } else {
         // If user not found, return empty array
         return NextResponse.json({
           orders: [],
           totalCount: 0,
-          currentUser: null,
+          currentUser,
           hasMore: false,
           page,
           limit,

@@ -8,8 +8,8 @@ import { useSessionContext } from "@/contexts/SessionContext";
 const authPages = ["/auth/signin", "/setup"];
 
 export function Navigation() {
-  const { session, status } = useSessionContext();
   const pathname = usePathname();
+  const { session, status } = useSessionContext();
 
   // Don't show navigation on auth pages
   if (authPages.includes(pathname)) {

@@ -9,26 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSessionContext } from "@/contexts/SessionContext";
+import { useState } from "react";
 
 export default function SignInPage() {
-  const router = useRouter();
-  const { session, status } = useSessionContext();
-  const [isRedirecting, setIsRedirecting] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
-
-  useEffect(() => {
-    // Check if user is already signed in
-    if (session && status !== "loading") {
-      setIsRedirecting(true);
-      // Small delay for smooth transition
-      setTimeout(() => {
-        router.push("/orders");
-      }, 300);
-    }
-  }, [session, status, router]);
 
   const handleSignIn = async () => {
     setIsSigningIn(true);
@@ -38,40 +22,6 @@ export default function SignInPage() {
       setIsSigningIn(false);
     }
   };
-
-  // Loading state
-  if (status === "loading") {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center p-4 bg-background">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="text-sm text-muted-foreground">Loading...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Redirect state
-  if (session || isRedirecting) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center p-4 bg-background">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="text-sm text-muted-foreground">
-                Already signed in! Redirecting...
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 flex items-center justify-center p-4 bg-background">
@@ -86,7 +36,7 @@ export default function SignInPage() {
           <Button
             onClick={handleSignIn}
             disabled={isSigningIn}
-            className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white transition-colors"
+            className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white transition-all duration-200 min-h-[44px]"
             size="lg"
           >
             {isSigningIn ? (

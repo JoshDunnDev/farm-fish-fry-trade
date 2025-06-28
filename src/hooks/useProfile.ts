@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { useSessionContext } from "@/contexts/SessionContext";
 
 interface UseProfileReturn {
@@ -12,8 +11,7 @@ interface UseProfileReturn {
 }
 
 export function useProfile(): UseProfileReturn {
-  const { session, status, update } = useSessionContext();
-  const router = useRouter();
+  const { session, update } = useSessionContext();
   const [inGameName, setInGameName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -31,13 +29,6 @@ export function useProfile(): UseProfileReturn {
       hasInitializedRef.current = true;
     }
   }, [session?.user?.inGameName]);
-
-  // Handle authentication redirect
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-    }
-  }, [status, router]);
 
   const updateProfile = useCallback(
     async (newInGameName: string) => {
@@ -63,6 +54,11 @@ export function useProfile(): UseProfileReturn {
           await update();
           setMessage("Profile updated successfully!");
           setInGameName(newInGameName.trim());
+
+          // Clear success message after 3 seconds
+          setTimeout(() => {
+            setMessage("");
+          }, 3000);
         } else {
           const error = await response.text();
           setMessage(`Error: ${error}`);

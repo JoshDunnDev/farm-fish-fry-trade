@@ -15,6 +15,8 @@ import {
 import { usePricing } from "@/hooks/usePricing";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { PricingData } from "@/lib/pricing";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { AddItemModal } from "@/components/ui/add-item-modal";
 
 interface EditableItem {
   name: string;
@@ -33,6 +35,41 @@ export default function AdminPricingPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Modal states
+  const [addItemModal, setAddItemModal] = useState({
+    isOpen: false,
+    isLoading: false,
+  });
+
+  const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    itemIndex: number | null;
+    itemName: string;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    itemIndex: null,
+    itemName: "",
+    isLoading: false,
+  });
+
+  const [removeTierModal, setRemoveTierModal] = useState<{
+    isOpen: boolean;
+    itemIndex: number | null;
+    tier: string;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    itemIndex: null,
+    tier: "",
+    isLoading: false,
+  });
+
+  const [cancelChangesModal, setCancelChangesModal] = useState({
+    isOpen: false,
+    isLoading: false,
+  });
 
   const ALL_TIERS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -81,26 +118,32 @@ export default function AdminPricingPage() {
   };
 
   const addNewItem = () => {
-    const itemName = prompt("Enter new item name:");
-    if (!itemName) return;
+    setAddItemModal({ isOpen: true, isLoading: false });
+  };
+
+  const handleAddItem = (item: {
+    itemName: string;
+    tier: number;
+    price: number;
+  }) => {
+    setAddItemModal((prev) => ({ ...prev, isLoading: true }));
 
     // Check if item already exists
     if (
       editableItems.some(
-        (item) => item.name.toLowerCase() === itemName.toLowerCase()
+        (existingItem) =>
+          existingItem.name.toLowerCase() === item.itemName.toLowerCase()
       )
     ) {
       setMessage("Item already exists");
+      setAddItemModal({ isOpen: false, isLoading: false });
       return;
     }
 
     const newItem: EditableItem = {
-      name: itemName,
+      name: item.itemName,
       prices: {
-        tier1: 1.0,
-        tier2: 1.0,
-        tier3: 1.0,
-        tier4: 1.0,
+        [`tier${item.tier}`]: item.price,
       },
       isNew: true,
     };
@@ -108,19 +151,39 @@ export default function AdminPricingPage() {
     setEditableItems((prev) => [newItem, ...prev]);
     setHasUnsavedChanges(true);
     setMessage(
-      `Added new item: ${itemName} (will be added to the main list after saving)`
+      `Added new item: ${item.itemName} (will be added to the main list after saving)`
     );
+    setAddItemModal({ isOpen: false, isLoading: false });
   };
 
   const removeItem = (itemIndex: number) => {
     const item = editableItems[itemIndex];
-    if (confirm(`Are you sure you want to remove "${item.name}"?`)) {
-      setEditableItems((prev) =>
-        prev.filter((_, index) => index !== itemIndex)
-      );
-      setHasUnsavedChanges(true);
-      setMessage(`Removed item: ${item.name} (remember to save)`);
-    }
+    setDeleteModal({
+      isOpen: true,
+      itemIndex,
+      itemName: item.name,
+      isLoading: false,
+    });
+  };
+
+  const confirmRemoveItem = () => {
+    if (deleteModal.itemIndex === null) return;
+
+    setDeleteModal((prev) => ({ ...prev, isLoading: true }));
+
+    const item = editableItems[deleteModal.itemIndex];
+    setEditableItems((prev) =>
+      prev.filter((_, index) => index !== deleteModal.itemIndex)
+    );
+    setHasUnsavedChanges(true);
+    setMessage(`Removed item: ${item.name} (remember to save)`);
+
+    setDeleteModal({
+      isOpen: false,
+      itemIndex: null,
+      itemName: "",
+      isLoading: false,
+    });
   };
 
   const addTierToItem = (itemIndex: number, tier: number) => {
@@ -134,14 +197,32 @@ export default function AdminPricingPage() {
   };
 
   const removeTierFromItem = (itemIndex: number, tier: string) => {
-    if (confirm(`Remove ${tier} from this item?`)) {
-      setEditableItems((prev) => {
-        const updated = [...prev];
-        delete updated[itemIndex].prices[tier];
-        return updated;
-      });
-      setHasUnsavedChanges(true);
-    }
+    setRemoveTierModal({
+      isOpen: true,
+      itemIndex,
+      tier,
+      isLoading: false,
+    });
+  };
+
+  const confirmRemoveTier = () => {
+    if (removeTierModal.itemIndex === null) return;
+
+    setRemoveTierModal((prev) => ({ ...prev, isLoading: true }));
+
+    setEditableItems((prev) => {
+      const updated = [...prev];
+      delete updated[removeTierModal.itemIndex!].prices[removeTierModal.tier];
+      return updated;
+    });
+    setHasUnsavedChanges(true);
+
+    setRemoveTierModal({
+      isOpen: false,
+      itemIndex: null,
+      tier: "",
+      isLoading: false,
+    });
   };
 
   const saveAllChanges = async () => {
@@ -197,13 +278,19 @@ export default function AdminPricingPage() {
   };
 
   const cancelChanges = () => {
-    if (confirm("Are you sure you want to cancel all unsaved changes?")) {
-      if (pricingData) {
-        loadEditableData(pricingData);
-        setHasUnsavedChanges(false);
-        setMessage("Changes cancelled");
-      }
+    setCancelChangesModal({ isOpen: true, isLoading: false });
+  };
+
+  const confirmCancelChanges = () => {
+    setCancelChangesModal((prev) => ({ ...prev, isLoading: true }));
+
+    if (pricingData) {
+      loadEditableData(pricingData);
+      setHasUnsavedChanges(false);
+      setMessage("Changes cancelled");
     }
+
+    setCancelChangesModal({ isOpen: false, isLoading: false });
   };
 
   const getItemTiers = (item: EditableItem): number[] => {
@@ -639,6 +726,69 @@ export default function AdminPricingPage() {
           <li>• Click "Cancel Changes" to revert all unsaved modifications</li>
         </ul>
       </div>
+
+      {/* Add Item Modal */}
+      <AddItemModal
+        isOpen={addItemModal.isOpen}
+        onClose={() => setAddItemModal({ isOpen: false, isLoading: false })}
+        onAdd={handleAddItem}
+        isLoading={addItemModal.isLoading}
+      />
+
+      {/* Delete Item Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={() =>
+          setDeleteModal({
+            isOpen: false,
+            itemIndex: null,
+            itemName: "",
+            isLoading: false,
+          })
+        }
+        onConfirm={confirmRemoveItem}
+        title="Remove Item"
+        description={`Are you sure you want to remove "${deleteModal.itemName}"? This action cannot be undone.`}
+        confirmText="Remove"
+        cancelText="Cancel"
+        isLoading={deleteModal.isLoading}
+        variant="destructive"
+      />
+
+      {/* Remove Tier Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={removeTierModal.isOpen}
+        onClose={() =>
+          setRemoveTierModal({
+            isOpen: false,
+            itemIndex: null,
+            tier: "",
+            isLoading: false,
+          })
+        }
+        onConfirm={confirmRemoveTier}
+        title="Remove Tier"
+        description={`Remove ${removeTierModal.tier} from this item?`}
+        confirmText="Remove"
+        cancelText="Cancel"
+        isLoading={removeTierModal.isLoading}
+        variant="destructive"
+      />
+
+      {/* Cancel Changes Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={cancelChangesModal.isOpen}
+        onClose={() =>
+          setCancelChangesModal({ isOpen: false, isLoading: false })
+        }
+        onConfirm={confirmCancelChanges}
+        title="Cancel Changes"
+        description="Are you sure you want to cancel all unsaved changes? This action cannot be undone."
+        confirmText="Cancel Changes"
+        cancelText="Keep Editing"
+        isLoading={cancelChangesModal.isLoading}
+        variant="destructive"
+      />
     </div>
   );
 }

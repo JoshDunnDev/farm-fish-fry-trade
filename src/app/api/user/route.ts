@@ -8,13 +8,19 @@ const prisma = new PrismaClient();
 export async function GET() {
   const session = await getServerSession(authOptions);
 
-  if (!session?.user?.discordId) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const user = await prisma.user.findUnique({
       where: { discordId: session.user.id },
+      select: {
+        id: true,
+        discordId: true,
+        discordName: true,
+        inGameName: true,
+      },
     });
 
     if (!user) {
