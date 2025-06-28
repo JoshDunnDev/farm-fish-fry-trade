@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,28 +16,51 @@ import { useSessionContext } from "@/contexts/SessionContext";
 export default function HomePage() {
   const { session, status } = useSessionContext();
   const router = useRouter();
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
     // If user is authenticated, redirect to orders page
-    if (session) {
-      router.push("/orders");
+    if (session && status !== "loading") {
+      setIsRedirecting(true);
+      // Small delay to show smooth transition
+      setTimeout(() => {
+        router.push("/orders");
+      }, 300);
     }
-  }, [session, router]);
+  }, [session, status, router]);
 
-  // Show loading while checking session
+  // Smooth loading state
   if (status === "loading") {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <p>Loading...</p>
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-muted-foreground">
+                Loading FarmyFishFry...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  // If authenticated, don't show login (will redirect)
-  if (session) {
+  // Smooth redirect state
+  if (session || isRedirecting) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <p>Redirecting...</p>
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-muted-foreground">
+                Welcome back! Redirecting to orders...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -55,8 +78,9 @@ export default function HomePage() {
         </CardHeader>
         <CardContent>
           <Button
-            onClick={() => signIn("discord")}
-            className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white"
+            onClick={() => signIn("discord", { callbackUrl: "/orders" })}
+            className="w-full bg-[#5865F2] hover:bg-[#4752C4] text-white transition-colors"
+            size="lg"
           >
             <svg
               className="w-5 h-5 mr-2"
@@ -67,6 +91,9 @@ export default function HomePage() {
             </svg>
             Sign in with Discord
           </Button>
+          <p className="text-center text-sm text-muted-foreground mt-4">
+            Join the FarmFishFry cohort trading community
+          </p>
         </CardContent>
       </Card>
     </div>

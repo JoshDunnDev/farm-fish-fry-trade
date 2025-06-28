@@ -13,17 +13,48 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useSessionContext } from "@/contexts/SessionContext";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function AuthButton() {
   const { session, status, isAdmin } = useSessionContext();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+
+    // Immediately navigate to signin page for instant feedback
+    router.push("/auth/signin");
+
+    try {
+      // Sign out in background - NextAuth will handle session cleanup
+      await signOut({ redirect: false });
+    } catch (error) {
+      console.error("Sign out error:", error);
+      // If signout fails, we're already on signin page which is fine
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   if (status === "loading") {
-    return <Button disabled>Loading...</Button>;
+    return (
+      <Button
+        disabled
+        variant="ghost"
+        className="relative h-8 w-8 rounded-full"
+      >
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
+      </Button>
+    );
   }
 
   if (!session) {
     return (
-      <Button onClick={() => signIn("discord")}>Sign in with Discord</Button>
+      <Button onClick={() => signIn("discord")} size="sm">
+        Sign in with Discord
+      </Button>
     );
   }
 
@@ -64,7 +95,9 @@ export function AuthButton() {
           </>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => signOut()}>Sign out</DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSignOut} disabled={isSigningOut}>
+          Sign out
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
