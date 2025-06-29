@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NotificationService } from "@/lib/notification-service";
 
-// Force this route to be dynamic
+// Force dynamic rendering for this route
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
