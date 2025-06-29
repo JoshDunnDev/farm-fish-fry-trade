@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import Link from "next/link";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { EditOrderModal } from "@/components/edit-order-modal";
 
 interface Order {
   id: string;
@@ -89,6 +90,17 @@ export default function OrdersPage() {
   }>({
     isOpen: false,
     orderId: null,
+    isLoading: false,
+  });
+
+  // Add edit modal state
+  const [editModal, setEditModal] = useState<{
+    isOpen: boolean;
+    order: Order | null;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    order: null,
     isLoading: false,
   });
 
@@ -251,6 +263,53 @@ export default function OrdersPage() {
       orderId,
       isLoading: false,
     });
+  };
+
+  const handleEditOrder = (order: Order) => {
+    setEditModal({
+      isOpen: true,
+      order,
+      isLoading: false,
+    });
+  };
+
+  const confirmEditOrder = async (editedOrder: Partial<Order>) => {
+    if (!editModal.order) return;
+
+    setEditModal((prev) => ({ ...prev, isLoading: true }));
+
+    try {
+      const response = await fetch(`/api/orders/${editModal.order.id}/edit`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editedOrder),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || "Failed to edit order");
+        return;
+      }
+
+      const updatedOrder = await response.json();
+
+      // Update the order in the local state
+      updateOrder(editModal.order.id, updatedOrder);
+
+      // Close modal
+      setEditModal({
+        isOpen: false,
+        order: null,
+        isLoading: false,
+      });
+    } catch (error) {
+      console.error("Error editing order:", error);
+      alert("Failed to edit order");
+    } finally {
+      setEditModal((prev) => ({ ...prev, isLoading: false }));
+    }
   };
 
   const confirmDeleteOrder = async () => {
@@ -439,7 +498,15 @@ export default function OrdersPage() {
 
   const canDeleteOrder = (order: Order) => {
     return (
-      order.status === "OPEN" &&
+      order.status !== "FULFILLED" &&
+      currentUser &&
+      order.creator.id === currentUser.id
+    );
+  };
+
+  const canEditOrder = (order: Order) => {
+    return (
+      order.status !== "FULFILLED" &&
       currentUser &&
       order.creator.id === currentUser.id
     );
@@ -674,11 +741,39 @@ export default function OrdersPage() {
                         </td>
                         <td className="px-3 py-2">
                           <div className="flex gap-1 justify-start">
+                            {/* Actions for orders you own */}
+                            {currentUser &&
+                              order.creator.id === currentUser.id && (
+                                <>
+                                  {canEditOrder(order) && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() => handleEditOrder(order)}
+                                      className="h-6 w-16 text-xs px-2 py-1 bg-blue-500/80 hover:bg-blue-500 text-white"
+                                    >
+                                      Edit
+                                    </Button>
+                                  )}
+                                  {canDeleteOrder(order) && (
+                                    <Button
+                                      size="sm"
+                                      onClick={() =>
+                                        handleDeleteOrder(order.id)
+                                      }
+                                      className="h-6 w-16 text-xs px-2 py-1 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
+                                    >
+                                      Delete
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+
+                            {/* Actions for orders you can interact with */}
                             {canClaimOrder(order) && (
                               <Button
                                 size="sm"
                                 onClick={() => handleClaimOrder(order.id)}
-                                className="h-6 w-20 text-xs px-2 py-1 bg-primary/80 hover:bg-primary text-primary-foreground"
+                                className="h-6 w-full text-xs px-2 py-1 bg-primary/80 hover:bg-primary text-primary-foreground"
                               >
                                 Claim
                               </Button>
@@ -687,7 +782,7 @@ export default function OrdersPage() {
                               <Button
                                 size="sm"
                                 onClick={() => handleMarkReady(order.id)}
-                                className="h-6 w-20 text-xs px-2 py-1 bg-yellow-500/80 hover:bg-yellow-500 text-black"
+                                className="h-6 w-16 text-xs px-2 py-1 bg-yellow-500/80 hover:bg-yellow-500 text-black"
                               >
                                 Ready
                               </Button>
@@ -696,18 +791,9 @@ export default function OrdersPage() {
                               <Button
                                 size="sm"
                                 onClick={() => handleCompleteOrder(order.id)}
-                                className="h-6 w-20 text-xs px-2 py-1 bg-green-500/80 hover:bg-green-500 text-black"
+                                className="h-6 w-full text-xs px-2 py-1 bg-green-500/80 hover:bg-green-500 text-black"
                               >
                                 Complete
-                              </Button>
-                            )}
-                            {canDeleteOrder(order) && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleDeleteOrder(order.id)}
-                                className="h-6 w-20 text-xs px-2 py-1 bg-destructive/80 hover:bg-destructive text-destructive-foreground"
-                              >
-                                Delete
                               </Button>
                             )}
                           </div>
@@ -739,6 +825,17 @@ export default function OrdersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Order Modal */}
+      <EditOrderModal
+        isOpen={editModal.isOpen}
+        onClose={() =>
+          setEditModal({ isOpen: false, order: null, isLoading: false })
+        }
+        onConfirm={confirmEditOrder}
+        order={editModal.order}
+        isLoading={editModal.isLoading}
+      />
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal

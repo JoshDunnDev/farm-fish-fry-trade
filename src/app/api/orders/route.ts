@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { NotificationService } from "@/lib/notification-service";
 
 // Force this route to be dynamic
 export const dynamic = "force-dynamic";
@@ -257,18 +258,31 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if order can be deleted (only OPEN orders)
-    if (order.status !== "OPEN") {
+    // Allow order creators to delete orders that are OPEN, IN_PROGRESS, or READY_TO_TRADE
+    // But not FULFILLED orders (completed trades)
+    if (order.status === "FULFILLED") {
       return NextResponse.json(
-        { error: "Only open orders can be deleted" },
+        { error: "Cannot delete completed orders" },
         { status: 400 }
       );
     }
+
+    // Store previous status for notifications
+    const previousStatus = order.status;
 
     // Delete the order
     await prisma.order.delete({
       where: { id: orderId },
     });
+
+    // If the order was claimed, notify the claimer that it was cancelled
+    if (order.claimerId && previousStatus !== "OPEN") {
+      await NotificationService.handleOrderUpdate(
+        orderId,
+        "OPEN",
+        previousStatus
+      );
+    }
 
     return NextResponse.json({ message: "Order deleted successfully" });
   } catch (error) {
