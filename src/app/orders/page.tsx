@@ -499,6 +499,7 @@ export default function OrdersPage() {
   const canDeleteOrder = (order: Order) => {
     return (
       order.status !== "FULFILLED" &&
+      order.status !== "READY_TO_TRADE" && // Don't allow delete when ready to trade
       currentUser &&
       order.creator.id === currentUser.id
     );
@@ -507,6 +508,7 @@ export default function OrdersPage() {
   const canEditOrder = (order: Order) => {
     return (
       order.status !== "FULFILLED" &&
+      order.status !== "READY_TO_TRADE" && // Don't allow edit when ready to trade
       currentUser &&
       order.creator.id === currentUser.id
     );
