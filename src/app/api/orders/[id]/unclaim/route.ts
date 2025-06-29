@@ -19,56 +19,52 @@ export async function POST(
   try {
     const orderId = params.id;
 
-    // Get or create user
-    let user = await prisma.user.findUnique({
+    // Get user
+    const user = await prisma.user.findUnique({
       where: { discordId: session.user.id },
     });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          discordId: session.user.id,
-          discordName: session.user.name || "Unknown User",
-          inGameName: null,
-        },
-      });
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check if order exists and is available to claim
+    // Check if order exists and user can unclaim it
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { creator: true },
+      include: { creator: true, claimer: true },
     });
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    if (order.status !== "OPEN") {
+    // Only the claimer can unclaim the order
+    if (order.claimerId !== user.id) {
       return NextResponse.json(
-        { error: "Order is not available for claiming" },
+        { error: "You can only unclaim orders you have claimed" },
         { status: 400 }
       );
     }
 
-    if (order.creatorId === user.id) {
+    // Can only unclaim orders that are IN_PROGRESS or READY_TO_TRADE
+    if (!["IN_PROGRESS", "READY_TO_TRADE"].includes(order.status)) {
       return NextResponse.json(
-        { error: "Cannot claim your own order" },
+        {
+          error:
+            "Can only unclaim orders that are in progress or ready to trade",
+        },
         { status: 400 }
       );
     }
 
-    // Claim the order
-    // For SELL orders, go straight to READY_TO_TRADE since seller already has the item
-    // For BUY orders, go to IN_PROGRESS since fulfiller needs to gather the item
-    const newStatus =
-      order.orderType === "SELL" ? "READY_TO_TRADE" : "IN_PROGRESS";
+    const previousStatus = order.status;
 
+    // Unclaim the order - set back to OPEN and remove claimer
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
-        status: newStatus,
-        claimerId: user.id,
+        status: "OPEN",
+        claimerId: null,
         updatedAt: new Date(),
       },
       include: {
@@ -77,14 +73,18 @@ export async function POST(
       },
     });
 
-    // Send notification for order being claimed
-    await NotificationService.handleOrderUpdate(orderId, newStatus, "OPEN");
+    // Send notification for order being unclaimed (cancelled)
+    await NotificationService.handleOrderUpdate(
+      orderId,
+      "OPEN",
+      previousStatus
+    );
 
     return NextResponse.json(updatedOrder);
   } catch (error) {
-    console.error("Error claiming order:", error);
+    console.error("Error unclaiming order:", error);
     return NextResponse.json(
-      { error: "Failed to claim order" },
+      { error: "Failed to unclaim order" },
       { status: 500 }
     );
   }

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AuthButton } from "@/components/auth-button";
+import { NotificationCenter } from "@/components/notifications/notification-center";
 import { useSessionContext } from "@/contexts/SessionContext";
 
 const authPages = ["/auth/signin", "/setup"];
@@ -101,6 +102,7 @@ export function Navigation() {
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          <NotificationCenter />
           <AuthButton />
         </div>
       </div>

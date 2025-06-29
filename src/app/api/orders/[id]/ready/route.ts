@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PrismaClient } from "@prisma/client";
+import { NotificationService } from "@/lib/notification-service";
 
 const prisma = new PrismaClient();
 
@@ -64,6 +65,13 @@ export async function POST(
         claimer: true,
       },
     });
+
+    // Send notification for order being ready
+    await NotificationService.handleOrderUpdate(
+      orderId,
+      "READY_TO_TRADE",
+      "IN_PROGRESS"
+    );
 
     return NextResponse.json(updatedOrder);
   } catch (error) {

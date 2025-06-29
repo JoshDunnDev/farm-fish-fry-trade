@@ -13,6 +13,8 @@ declare module "next-auth" {
       discordName?: string;
       inGameName?: string | null;
       isAdmin?: boolean;
+      notificationsEnabled?: boolean;
+      audioEnabled?: boolean;
     };
   }
 }
@@ -23,6 +25,8 @@ declare module "next-auth/jwt" {
     discordName?: string;
     inGameName?: string | null;
     isAdmin?: boolean;
+    notificationsEnabled?: boolean;
+    audioEnabled?: boolean;
     userDataFetched?: boolean;
   }
 }
@@ -92,6 +96,8 @@ export const authOptions: NextAuthOptions = {
           if (dbUser) {
             token.inGameName = dbUser.inGameName;
             token.isAdmin = dbUser.isAdmin || false;
+            token.notificationsEnabled = dbUser.notificationsEnabled;
+            token.audioEnabled = dbUser.audioEnabled;
             token.userDataFetched = true;
           }
         } catch (error) {
@@ -109,6 +115,8 @@ export const authOptions: NextAuthOptions = {
         session.user.discordName = token.discordName as string;
         session.user.inGameName = token.inGameName;
         session.user.isAdmin = token.isAdmin || false;
+        session.user.notificationsEnabled = token.notificationsEnabled ?? true;
+        session.user.audioEnabled = token.audioEnabled ?? true;
       }
       return session;
     },

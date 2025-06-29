@@ -45,6 +45,8 @@ model User {
   discordName   String?
   inGameName    String?
   isAdmin       Boolean   @default(false)
+  notificationsEnabled Boolean @default(true)
+  audioEnabled  Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
