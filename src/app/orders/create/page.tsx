@@ -271,73 +271,60 @@ export default function CreateOrderPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select order type" />
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="BUY">
-                      <span>Buy Order - I want to buy</span>
-                    </SelectItem>
-                    <SelectItem value="SELL">
-                      <span>Sell Order - I have to sell</span>
-                    </SelectItem>
+                    <SelectItem value="BUY">Buy Order</SelectItem>
+                    <SelectItem value="SELL">Sell Order</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  {getOrderTypeDescription()}
-                </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="itemName">Item Name</Label>
-                <Select
-                  value={formData.itemName}
-                  onValueChange={handleItemNameChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select an item" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableItems.map((itemName) => (
-                      <SelectItem key={itemName} value={itemName}>
-                        <span className="capitalize">{itemName}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Choose from available items with pricing data
-                </p>
-              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="itemName">Item</Label>
+                  <Select
+                    value={formData.itemName}
+                    onValueChange={handleItemNameChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an item" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableItems.map((itemName) => (
+                        <SelectItem key={itemName} value={itemName}>
+                          <span className="capitalize">{itemName}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="tier">Tier</Label>
-                <Select
-                  value={formData.tier.toString()}
-                  onValueChange={(value) => handleTierChange(parseInt(value))}
-                  disabled={!formData.itemName}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        formData.itemName
-                          ? "Select a tier"
-                          : "Select item first"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTiers.map((tier) => (
-                      <SelectItem key={tier} value={tier.toString()}>
-                        Tier {tier}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {formData.itemName && availableTiers.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-red-500">
-                    No tiers available for this item
-                  </p>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="tier">Tier</Label>
+                  <Select
+                    value={formData.tier.toString()}
+                    onValueChange={(value) => handleTierChange(parseInt(value))}
+                    disabled={!formData.itemName}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          formData.itemName
+                            ? "Select tier"
+                            : "Select item first"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTiers.map((tier) => (
+                        <SelectItem key={tier} value={tier.toString()}>
+                          Tier {tier}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -354,7 +341,7 @@ export default function CreateOrderPage() {
                     className="bg-muted cursor-not-allowed"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Price is automatically set based on current market rates
+                    Auto-set based on pricing page
                   </p>
                 </div>
 
@@ -374,51 +361,38 @@ export default function CreateOrderPage() {
                 </div>
               </div>
 
-              <div className="bg-secondary/20 p-4 rounded-md">
-                <p className="text-sm text-muted-foreground mb-2">
-                  Order Summary:
-                </p>
-                <div className="space-y-1 text-sm">
-                  <p>
-                    <span className="font-medium">Type:</span>{" "}
-                    <span>
-                      {formData.orderType.charAt(0).toUpperCase() +
-                        formData.orderType.slice(1).toLowerCase()}{" "}
-                      order
-                    </span>
-                  </p>
-                  <p>
-                    <span className="font-medium">Item:</span>{" "}
+              <div className="bg-secondary/10 p-4 rounded-md border">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-muted-foreground">
+                    {formData.orderType.charAt(0).toUpperCase() +
+                      formData.orderType.slice(1).toLowerCase()}{" "}
                     {formData.itemName
-                      ? `T${formData.tier} ${formData.itemName}`
-                      : "Not specified"}
-                  </p>
-                  <p>
-                    <span className="font-medium">Amount:</span>{" "}
-                    {formData.amount || "0"}
-                  </p>
-                  <p>
-                    <span className="font-medium">Price per unit:</span>{" "}
-                    {orderSummary.formattedPrice}
-                  </p>
-                  <p className="font-medium border-t pt-2">
-                    <span>Total Value:</span> {orderSummary.formattedTotal}
-                  </p>
+                      ? `T${formData.tier} ${
+                          formData.itemName.charAt(0).toUpperCase() +
+                          formData.itemName.slice(1)
+                        }`
+                      : "order"}{" "}
+                    x {formData.amount || "0"}
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {orderSummary.formattedTotal}
+                  </div>
                 </div>
               </div>
 
               {error && <div className="text-sm text-destructive">{error}</div>}
 
-              <div className="flex gap-2">
+              <div className="flex gap-3 pt-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => router.push("/orders")}
                   disabled={isLoading}
+                  className="flex-1"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="flex-1">
                   {isLoading ? "Creating..." : "Create Order"}
                 </Button>
               </div>

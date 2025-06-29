@@ -14,7 +14,7 @@ import { formatPrice } from "@/lib/pricing";
 async function getMarketStats() {
   // Total orders by status
   const orderStats = await prisma.order.groupBy({
-    by: ['status'],
+    by: ["status"],
     _count: {
       id: true,
     },
@@ -23,7 +23,7 @@ async function getMarketStats() {
   // Get fulfilled orders to calculate volume
   const fulfilledOrders = await prisma.order.findMany({
     where: {
-      status: 'FULFILLED',
+      status: "FULFILLED",
     },
     select: {
       pricePerUnit: true,
@@ -32,14 +32,20 @@ async function getMarketStats() {
   });
 
   // Calculate total volume and amount
-  const totalVolume = fulfilledOrders.reduce((sum, order) => sum + (order.pricePerUnit * order.amount), 0);
-  const totalAmount = fulfilledOrders.reduce((sum, order) => sum + order.amount, 0);
+  const totalVolume = fulfilledOrders.reduce(
+    (sum, order) => sum + order.pricePerUnit * order.amount,
+    0
+  );
+  const totalAmount = fulfilledOrders.reduce(
+    (sum, order) => sum + order.amount,
+    0
+  );
 
   // Most traded items
   const topItems = await prisma.order.groupBy({
-    by: ['itemName'],
+    by: ["itemName"],
     where: {
-      status: 'FULFILLED',
+      status: "FULFILLED",
     },
     _sum: {
       amount: true,
@@ -49,7 +55,7 @@ async function getMarketStats() {
     },
     orderBy: {
       _sum: {
-        amount: 'desc',
+        amount: "desc",
       },
     },
     take: 10,
@@ -58,7 +64,7 @@ async function getMarketStats() {
   // Get individual orders for volume calculation per item
   const fulfilledOrdersWithItems = await prisma.order.findMany({
     where: {
-      status: 'FULFILLED',
+      status: "FULFILLED",
     },
     select: {
       itemName: true,
@@ -69,37 +75,19 @@ async function getMarketStats() {
 
   // Calculate volume per item
   const itemVolumeMap = new Map<string, number>();
-  fulfilledOrdersWithItems.forEach(order => {
+  fulfilledOrdersWithItems.forEach((order) => {
     const volume = order.pricePerUnit * order.amount;
-    itemVolumeMap.set(order.itemName, (itemVolumeMap.get(order.itemName) || 0) + volume);
+    itemVolumeMap.set(
+      order.itemName,
+      (itemVolumeMap.get(order.itemName) || 0) + volume
+    );
   });
 
   // Add volume data to top items
-  const topItemsWithVolume = topItems.map(item => ({
+  const topItemsWithVolume = topItems.map((item) => ({
     ...item,
     totalVolume: itemVolumeMap.get(item.itemName) || 0,
   }));
-
-  // Average order values by item
-  const avgOrderValues = await prisma.order.groupBy({
-    by: ['itemName', 'tier'],
-    where: {
-      status: 'FULFILLED',
-    },
-    _avg: {
-      pricePerUnit: true,
-    },
-    _count: {
-      id: true,
-    },
-    having: {
-      id: {
-        _count: {
-          gte: 2, // Only show items with at least 2 trades
-        },
-      },
-    },
-  });
 
   return {
     orderStats,
@@ -108,7 +96,6 @@ async function getMarketStats() {
       totalAmount,
     },
     topItems: topItemsWithVolume,
-    avgOrderValues,
   };
 }
 
@@ -127,9 +114,12 @@ async function getLeaderboards() {
 
   // Calculate volume per trader
   const traderVolumeMap = new Map<string, number>();
-  fulfilledOrdersByTrader.forEach(order => {
+  fulfilledOrdersByTrader.forEach((order) => {
     const volume = order.pricePerUnit * order.amount;
-    traderVolumeMap.set(order.creatorId, (traderVolumeMap.get(order.creatorId) || 0) + volume);
+    traderVolumeMap.set(
+      order.creatorId,
+      (traderVolumeMap.get(order.creatorId) || 0) + volume
+    );
   });
 
   // Sort traders by volume and get top 10
@@ -211,8 +201,6 @@ async function getLeaderboards() {
   return { tradersWithNames, fulfillersWithNames, activeTraderNames };
 }
 
-
-
 export default async function StatsPage() {
   const session = await getServerSession(authOptions);
 
@@ -241,12 +229,12 @@ export default async function StatsPage() {
             <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
           </CardHeader>
           <CardContent>
-                       <div className="text-2xl font-bold">
-             {formatPrice(marketStats.volumeStats.totalVolume)}
-           </div>
-           <p className="text-xs text-muted-foreground">
-             {marketStats.volumeStats.totalAmount} items traded
-           </p>
+            <div className="text-2xl font-bold">
+              {formatPrice(marketStats.volumeStats.totalVolume)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {marketStats.volumeStats.totalAmount} items traded
+            </p>
           </CardContent>
         </Card>
 
@@ -256,7 +244,8 @@ export default async function StatsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {marketStats.orderStats.find(s => s.status === 'OPEN')?._count.id || 0}
+              {marketStats.orderStats.find((s) => s.status === "OPEN")?._count
+                .id || 0}
             </div>
             <p className="text-xs text-muted-foreground">Currently available</p>
           </CardContent>
@@ -267,9 +256,10 @@ export default async function StatsPage() {
             <CardTitle className="text-sm font-medium">In Progress</CardTitle>
           </CardHeader>
           <CardContent>
-                       <div className="text-2xl font-bold">
-             {(marketStats.orderStats.find(s => s.status === 'IN_PROGRESS')?._count.id || 0)}
-           </div>
+            <div className="text-2xl font-bold">
+              {marketStats.orderStats.find((s) => s.status === "IN_PROGRESS")
+                ?._count.id || 0}
+            </div>
             <p className="text-xs text-muted-foreground">Being processed</p>
           </CardContent>
         </Card>
@@ -280,14 +270,15 @@ export default async function StatsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {marketStats.orderStats.find(s => s.status === 'FULFILLED')?._count.id || 0}
+              {marketStats.orderStats.find((s) => s.status === "FULFILLED")
+                ?._count.id || 0}
             </div>
             <p className="text-xs text-muted-foreground">Successfully traded</p>
           </CardContent>
         </Card>
       </div>
 
-            {/* Most Traded Items */}
+      {/* Most Traded Items */}
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Most Traded Items</CardTitle>
@@ -308,7 +299,8 @@ export default async function StatsPage() {
                       #{index + 1} {item.itemName}
                     </span>
                     <p className="text-xs text-muted-foreground">
-                      {item._count.id} orders • {formatPrice(item.totalVolume)} volume
+                      {item._count.id} orders • {formatPrice(item.totalVolume)}{" "}
+                      volume
                     </p>
                   </div>
                   <span className="text-foreground font-semibold">
@@ -409,38 +401,6 @@ export default async function StatsPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Market Activity */}
-      {marketStats.avgOrderValues.length > 0 && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Average Market Prices</CardTitle>
-            <CardDescription>Based on completed trades (minimum 2 trades)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {marketStats.avgOrderValues.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-center p-3 border rounded-lg"
-                >
-                  <div>
-                    <span className="font-medium capitalize">
-                      T{item.tier} {item.itemName}
-                    </span>
-                    <p className="text-xs text-muted-foreground">
-                      {item._count.id} trades
-                    </p>
-                  </div>
-                                     <span className="text-foreground font-semibold font-mono">
-                     {formatPrice(item._avg.pricePerUnit || 0)}
-                   </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
-} 
+}
