@@ -14,7 +14,6 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -43,23 +42,23 @@ services:
     environment:
       # Database
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
-      
+
       # NextAuth
       - NEXTAUTH_URL=${NEXTAUTH_URL}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-      
+
       # Discord OAuth (required for authentication)
       - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
       - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
-      
+
       # Application settings
       - NODE_ENV=production
       - PORT=3000
       - ADMIN_SECRET=${ADMIN_SECRET}
-      
+
       # Optional: Seed database on first run
       - SEED_DATABASE=${SEED_DATABASE:-false}
-      
+
     depends_on:
       - db
     healthcheck:
@@ -73,14 +72,14 @@ services:
     security_opt:
       - no-new-privileges:true
     deploy:
-      replicas: 2  # Run 2 instances for zero downtime
+      replicas: 2 # Run 2 instances for zero downtime
       update_config:
-        parallelism: 1  # Update one container at a time
-        delay: 30s      # Wait 30s between updates
+        parallelism: 1 # Update one container at a time
+        delay: 30s # Wait 30s between updates
         failure_action: rollback
-        monitor: 60s    # Monitor for 60s after update
+        monitor: 60s # Monitor for 60s after update
         max_failure_ratio: 0.3
-        order: start-first  # Start new container before stopping old one
+        order: start-first # Start new container before stopping old one
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -95,4 +94,4 @@ volumes:
 networks:
   app-network:
     driver: overlay
-    attachable: true 
+    attachable: true
