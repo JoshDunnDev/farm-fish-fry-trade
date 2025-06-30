@@ -34,7 +34,7 @@ services:
         delay: 5s
         max_attempts: 3
 
-  # Next.js Application with rolling updates
+  # Next.js Application with zero-downtime rolling updates
   app:
     image: joshdunndev/farmy-fish-fry:latest
     ports:
@@ -75,17 +75,20 @@ services:
       replicas: 2 # Run 2 instances for zero downtime
       update_config:
         parallelism: 1 # Update one container at a time
-        delay: 30s # Wait 30s between updates
+        delay: 15s # Wait between updates
         failure_action: rollback
-        monitor: 60s # Monitor for 60s after update
-        max_failure_ratio: 0.3
+        monitor: 45s # Monitor for 45s after update
+        max_failure_ratio: 0.5
         order: start-first # Start new container before stopping old one
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
-      placement:
-        max_replicas_per_node: 1
+      resources:
+        limits:
+          memory: 1G # Limit memory usage per container
+        reservations:
+          memory: 512M # Reserve minimum memory
 
 volumes:
   postgres_data:
