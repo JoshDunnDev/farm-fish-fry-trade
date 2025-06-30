@@ -372,22 +372,30 @@ export default function AdminPricingPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Price Management</h1>
-        <p className="text-muted-foreground mt-2">
-          Update prices for all items and tiers
-        </p>
-        {pricingData && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Last saved: {pricingData.lastUpdated}
+    <div className="container mx-auto px-6 py-8 space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Price Management</h1>
+          <p className="text-sm text-muted-foreground">
+            Update prices for all items and tiers
+            {pricingData && (
+              <span className="text-xs"> • Last saved: {pricingData.lastUpdated}</span>
+            )}
           </p>
-        )}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push("/admin/orders")}
+          >
+            Order Management
+          </Button>
+        </div>
       </div>
 
       {/* Save/Cancel Bar */}
       {hasUnsavedChanges && (
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <span className="text-yellow-800 font-medium">
@@ -410,21 +418,24 @@ export default function AdminPricingPage() {
         </div>
       )}
 
+      {/* Message */}
       {message && (
-        <div
-          className={`mb-4 p-3 rounded ${
-            message.includes("Error") || message.includes("Invalid")
-              ? "bg-red-100 text-red-700"
-              : message.includes("saved successfully")
-              ? "bg-green-100 text-green-700"
-              : "bg-blue-100 text-blue-700"
-          }`}
-        >
-          {message}
-        </div>
+        <Card>
+          <CardContent className="pt-4">
+            <p
+              className={`text-sm ${
+                message.includes("Error") || message.includes("Invalid")
+                  ? "text-red-600"
+                  : "text-green-600"
+              }`}
+            >
+              {message}
+            </p>
+          </CardContent>
+        </Card>
       )}
 
-      <div className="mb-6 flex justify-between items-center">
+      <div className="flex justify-between items-center">
         <Button onClick={addNewItem} disabled={saving}>
           Add New Item
         </Button>
