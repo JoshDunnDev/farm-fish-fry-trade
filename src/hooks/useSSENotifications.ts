@@ -8,9 +8,17 @@ export function useSSENotifications() {
   const { session } = useSessionContext();
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+  const connectingRef = useRef<boolean>(false);
 
   const connect = () => {
     if (!session?.user?.id) return;
+
+    // Prevent duplicate connections
+    if (connectingRef.current) {
+      return;
+    }
+
+    connectingRef.current = true;
 
     // Close existing connection
     if (eventSourceRef.current) {
@@ -22,7 +30,7 @@ export function useSSENotifications() {
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
-        console.log("SSE connection established");
+        connectingRef.current = false; // Reset connecting flag
       };
 
       eventSource.onmessage = (event) => {
@@ -31,7 +39,7 @@ export function useSSENotifications() {
 
           switch (data.type) {
             case "connected":
-              console.log("SSE connected at:", data.timestamp);
+              // Connection established
               break;
 
             case "ping":
@@ -43,20 +51,21 @@ export function useSSENotifications() {
               break;
 
             default:
-              console.log("Unknown SSE message type:", data.type);
+              // Unknown message type
+              break;
           }
         } catch (error) {
-          console.error("Failed to parse SSE message:", error);
+          console.error("Failed to parse SSE message:", error, event.data);
         }
       };
 
       eventSource.onerror = (error) => {
         console.error("SSE connection error:", error);
         eventSource.close();
+        connectingRef.current = false; // Reset connecting flag
 
         // Attempt to reconnect after 5 seconds
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log("Attempting to reconnect SSE...");
           connect();
         }, 5000);
       };
@@ -70,7 +79,10 @@ export function useSSENotifications() {
 
     // Check if notifications are enabled
     const settings = notificationManager.getSettings();
-    if (!settings.enabled) return;
+
+    if (!settings.enabled) {
+      return;
+    }
 
     switch (notificationType) {
       case "order_claimed":

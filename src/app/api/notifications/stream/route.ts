@@ -7,7 +7,15 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 // Store active SSE connections
-const connections = new Map<string, ReadableStreamDefaultController>();
+// Use globalThis to persist connections across hot reloads in development
+const globalForConnections = globalThis as unknown as {
+  sseConnections: Map<string, ReadableStreamDefaultController> | undefined;
+};
+
+const connections =
+  globalForConnections.sseConnections ??
+  new Map<string, ReadableStreamDefaultController>();
+globalForConnections.sseConnections = connections;
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);

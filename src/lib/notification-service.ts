@@ -107,10 +107,15 @@ export class NotificationService {
     previousStatus?: string
   ) {
     try {
-      // Fetch the order with related data
+      // Fetch the order with related data, including creator's Discord ID
       const order = await prisma.order.findUnique({
         where: { id: orderId },
         include: {
+          creator: {
+            select: {
+              discordId: true,
+            },
+          },
           claimer: {
             select: {
               name: true,
@@ -129,11 +134,20 @@ export class NotificationService {
         return;
       }
 
+      // Use creator's Discord ID for SSE notifications (matches session.user.id)
+      const creatorDiscordId = order.creator.discordId;
+      if (!creatorDiscordId) {
+        console.warn(
+          `Order ${orderId} creator has no Discord ID, skipping notification`
+        );
+        return;
+      }
+
       const orderChangeEvent: OrderChangeEvent = {
         orderId: order.id,
         previousStatus,
         newStatus,
-        creatorId: order.creatorId,
+        creatorId: creatorDiscordId, // Use Discord ID instead of database ID
         claimerId: order.claimerId,
         orderDetails: {
           itemName: order.itemName,
