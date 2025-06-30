@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,6 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  usePricing,
+  useAvailableTiers,
+  useItemPrice,
+} from "@/hooks/usePricing";
 
 interface Order {
   id: string;
@@ -64,6 +69,24 @@ export function EditOrderModal({
     orderType: "BUY",
   });
 
+  // Ref to prevent unnecessary price updates
+  const lastPriceUpdateRef = useRef<string>("");
+
+  // Use custom pricing hook
+  const {
+    pricingData,
+    loading: pricingLoading,
+    error: pricingError,
+  } = usePricing();
+
+  // Use pricing utility hooks
+  const availableTiers = useAvailableTiers(pricingData, order?.itemName || "");
+  const currentPrice = useItemPrice(
+    pricingData,
+    order?.itemName || "",
+    formData.tier
+  );
+
   // Reset form when order changes
   useEffect(() => {
     if (order) {
@@ -75,6 +98,41 @@ export function EditOrderModal({
       });
     }
   }, [order]);
+
+  // Auto-populate price when tier changes
+  useEffect(() => {
+    if (!order) return;
+
+    const newPriceKey = `${order.itemName}-${formData.tier}-${currentPrice}`;
+
+    // Only update if the price actually changed
+    if (lastPriceUpdateRef.current === newPriceKey) {
+      return;
+    }
+
+    if (currentPrice !== null) {
+      const newPrice = currentPrice;
+      if (formData.pricePerUnit !== newPrice) {
+        setFormData((prev) => ({
+          ...prev,
+          pricePerUnit: newPrice,
+        }));
+        lastPriceUpdateRef.current = newPriceKey;
+      }
+    } else if (
+      pricingData &&
+      order.itemName &&
+      formData.tier &&
+      formData.pricePerUnit !== 0
+    ) {
+      // Clear price if tier not available for this item
+      setFormData((prev) => ({
+        ...prev,
+        pricePerUnit: 0,
+      }));
+      lastPriceUpdateRef.current = newPriceKey;
+    }
+  }, [currentPrice, pricingData, order, formData.tier, formData.pricePerUnit]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,6 +156,15 @@ export function EditOrderModal({
     onConfirm(formData);
   };
 
+  const handleTierChange = (value: number) => {
+    // Reset price when tier changes (will be auto-populated by useEffect)
+    setFormData((prev) => ({
+      ...prev,
+      tier: value,
+      pricePerUnit: 0,
+    }));
+  };
+
   const formatPrice = (price: number) => {
     return price % 1 === 0
       ? `${price.toFixed(0)} HC`
@@ -105,6 +172,23 @@ export function EditOrderModal({
   };
 
   if (!order) return null;
+
+  // Show loading state if pricing data is still loading
+  if (pricingLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Order</DialogTitle>
+            <DialogDescription>Loading pricing data...</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-center py-8">
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -135,16 +219,14 @@ export function EditOrderModal({
               <Label htmlFor="tier">Tier</Label>
               <Select
                 value={formData.tier.toString()}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, tier: parseInt(value) })
-                }
+                onValueChange={(value) => handleTierChange(parseInt(value))}
                 disabled={isLoading}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((tier) => (
+                  {availableTiers.map((tier) => (
                     <SelectItem key={tier} value={tier.toString()}>
                       T{tier}
                     </SelectItem>
@@ -199,14 +281,13 @@ export function EditOrderModal({
                 min="0.001"
                 step="0.001"
                 value={formData.pricePerUnit}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    pricePerUnit: parseFloat(e.target.value) || 0,
-                  })
-                }
+                readOnly
+                className="bg-muted cursor-not-allowed"
                 disabled={isLoading}
               />
+              <p className="text-xs text-muted-foreground">
+                Auto-set based on pricing page
+              </p>
             </div>
           </div>
 
@@ -226,6 +307,12 @@ export function EditOrderModal({
               </div>
             </div>
           </div>
+
+          {pricingError && (
+            <div className="text-sm text-destructive">
+              Warning: {pricingError}. Price may not be current.
+            </div>
+          )}
 
           <DialogFooter>
             <Button
