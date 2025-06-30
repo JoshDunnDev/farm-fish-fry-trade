@@ -1,0 +1,98 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  # Next.js Application with rolling updates
+  app:
+    image: joshdunndev/farmy-fish-fry:latest
+    ports:
+      - "${APP_PORT:-7854}:3000"
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      
+      # NextAuth
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      
+      # Discord OAuth (required for authentication)
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      
+      # Application settings
+      - NODE_ENV=production
+      - PORT=3000
+      - ADMIN_SECRET=${ADMIN_SECRET}
+      
+      # Optional: Seed database on first run
+      - SEED_DATABASE=${SEED_DATABASE:-false}
+      
+    depends_on:
+      - db
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - app-network
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      replicas: 2  # Run 2 instances for zero downtime
+      update_config:
+        parallelism: 1  # Update one container at a time
+        delay: 30s      # Wait 30s between updates
+        failure_action: rollback
+        monitor: 60s    # Monitor for 60s after update
+        max_failure_ratio: 0.3
+        order: start-first  # Start new container before stopping old one
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      placement:
+        max_replicas_per_node: 1
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: overlay
+    attachable: true 

@@ -9,7 +9,7 @@ This guide explains how to deploy FarmyFishFry to production using Docker and Po
 - Discord application set up for OAuth authentication
 - Your code pushed to a GitHub repository
 
-## Quick Start with Portainer
+## Quick Start with Portainer (Zero-Downtime Deployment)
 
 ### 1. Discord OAuth Setup
 
@@ -19,18 +19,26 @@ This guide explains how to deploy FarmyFishFry to production using Docker and Po
 4. Add redirect URI: `http://your-domain.com:7854/api/auth/callback/discord` (replace with your actual domain)
 5. Copy the Client ID and Client Secret
 
-### 2. Deploy with Portainer
+### 2. Initialize Docker Swarm (One-time setup)
 
-1. **Download the production docker-compose file:**
-   - Get `docker-compose.production.yml` from your repository
-   - Edit the GitHub URL: Replace `YOUR_USERNAME` with your actual GitHub username
+**On your server, run this command once:**
 
-2. **In Portainer:**
+```bash
+docker swarm init
+```
+
+This enables Docker Swarm mode, which provides built-in zero-downtime deployments.
+
+### 3. Deploy with Portainer
+
+1. **In Portainer:**
+
    - Go to **Stacks** → **Add stack**
    - Name your stack (e.g., `farmy-fish-fry`)
    - Choose **Upload** and upload the `docker-compose.production.yml` file
 
-3. **Set Environment Variables:**
+2. **Set Environment Variables:**
+
    ```
    POSTGRES_DB=farmy-fish-fry
    POSTGRES_USER=postgres
@@ -45,7 +53,9 @@ This guide explains how to deploy FarmyFishFry to production using Docker and Po
    ADMIN_SECRET=your-admin-secret-change-in-production
    ```
 
-4. **Deploy the stack**
+3. **Deploy the stack**
+
+The application will now run with 2 replicas for high availability and zero-downtime updates.
 
 ### 3. Access Your Application
 
@@ -69,7 +79,7 @@ Add this to your nginx configuration:
 server {
     listen 80;
     server_name your-domain.com;
-    
+
     location / {
         proxy_pass http://localhost:7854;
         proxy_set_header Host $host;
@@ -82,44 +92,54 @@ server {
 
 ### Environment Variables Reference
 
-| Variable | Description | Required | Example |
-|----------|-------------|----------|---------|
-| `POSTGRES_DB` | Database name | **Yes** | `farmy-fish-fry` |
-| `POSTGRES_USER` | Database user | **Yes** | `postgres` |
-| `POSTGRES_PASSWORD` | Database password | **Yes** | `your-secure-password` |
-| `DB_PORT` | Database port | **Yes** | `5432` |
-| `APP_PORT` | Application port | **Yes** | `7854` |
-| `NEXTAUTH_URL` | Full URL of your app | **Yes** | `http://your-domain.com:7854` |
-| `NEXTAUTH_SECRET` | NextAuth secret key | **Yes** | `32-char-random-string` |
-| `DISCORD_CLIENT_ID` | Discord OAuth Client ID | **Yes** | `your_client_id` |
-| `DISCORD_CLIENT_SECRET` | Discord OAuth Client Secret | **Yes** | `your_client_secret` |
-| `SEED_DATABASE` | Seed database on startup | **Yes** | `false` |
-| `ADMIN_SECRET` | Admin API secret for price updates | **Yes** | `your-admin-secret` |
+| Variable                | Description                        | Required | Example                       |
+| ----------------------- | ---------------------------------- | -------- | ----------------------------- |
+| `POSTGRES_DB`           | Database name                      | **Yes**  | `farmy-fish-fry`              |
+| `POSTGRES_USER`         | Database user                      | **Yes**  | `postgres`                    |
+| `POSTGRES_PASSWORD`     | Database password                  | **Yes**  | `your-secure-password`        |
+| `DB_PORT`               | Database port                      | **Yes**  | `5432`                        |
+| `APP_PORT`              | Application port                   | **Yes**  | `7854`                        |
+| `NEXTAUTH_URL`          | Full URL of your app               | **Yes**  | `http://your-domain.com:7854` |
+| `NEXTAUTH_SECRET`       | NextAuth secret key                | **Yes**  | `32-char-random-string`       |
+| `DISCORD_CLIENT_ID`     | Discord OAuth Client ID            | **Yes**  | `your_client_id`              |
+| `DISCORD_CLIENT_SECRET` | Discord OAuth Client Secret        | **Yes**  | `your_client_secret`          |
+| `SEED_DATABASE`         | Seed database on startup           | **Yes**  | `false`                       |
+| `ADMIN_SECRET`          | Admin API secret for price updates | **Yes**  | `your-admin-secret`           |
 
 ## Updating the Application
 
-### Code Updates (Requires Downtime)
+### Code Updates (Zero Downtime! 🚀)
 
 To update to a new version:
 
-1. Push your code changes to your Git repository
-2. In Portainer, go to your stack
-3. Click **Re-pull and redeploy**
-4. The application will automatically:
-   - Pull the latest code from Git
-   - Rebuild the Docker image
-   - Run database migrations
-   - Restart with zero downtime
+1. **Push your code changes** to your Docker registry (Docker Hub)
+2. **In Portainer, go to your stack**
+3. **Click "Update the stack"**
+4. **Check "Re-pull image and redeploy"**
+5. **Click "Update"**
+
+Docker Swarm will automatically perform a rolling update:
+
+- ✅ Pull the new image
+- ✅ Start new containers with the updated code
+- ✅ Wait for health checks to pass
+- ✅ Route traffic to new containers
+- ✅ Stop old containers
+- ✅ **Zero downtime achieved!**
+
+You can monitor the update progress in Portainer under "Services" - you'll see both replicas updating one at a time.
 
 ### Price Updates (Zero Downtime) 🚀
 
 #### Option 1: Web Admin Interface (Recommended)
+
 1. Visit `http://your-domain:7854/admin/pricing`
 2. Enter your `ADMIN_SECRET`
 3. Update prices directly in the web interface
 4. Changes apply immediately without downtime
 
 #### Option 2: API Calls
+
 ```bash
 # Update a specific item's prices
 curl -X PUT http://your-domain:7854/api/admin/pricing \
@@ -175,7 +195,7 @@ The application includes health checks:
 # Application logs
 docker logs farmy-fish-fry-app-1 -f
 
-# Database logs  
+# Database logs
 docker logs farmy-fish-fry-db-1 -f
 ```
 
@@ -195,4 +215,4 @@ If you encounter issues:
 1. Check the logs for error messages
 2. Verify all environment variables are set correctly
 3. Ensure Discord OAuth is configured properly
-4. Check that ports are not in use by other services 
+4. Check that ports are not in use by other services
