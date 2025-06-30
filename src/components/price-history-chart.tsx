@@ -170,16 +170,35 @@ export function PriceHistoryChart({
     );
   }
 
-  // Format data for the chart
-  const chartData = data.history.map((entry, index) => ({
-    date: new Date(entry.date).toLocaleDateString("en-US", {
+  // Format data for the chart - group by date and show latest price per day
+  const groupedByDate = data.history.reduce((acc, entry) => {
+    const dateKey = new Date(entry.date).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-    }),
-    price: entry.price,
-    changeType: entry.changeType,
-    index,
-  }));
+    });
+    
+    // Keep the latest entry for each date (entries are already sorted by createdAt)
+    if (!acc[dateKey] || new Date(entry.date) > new Date(acc[dateKey].originalDate)) {
+      acc[dateKey] = {
+        date: dateKey,
+        price: entry.price,
+        changeType: entry.changeType,
+        originalDate: entry.date,
+      };
+    }
+    
+    return acc;
+  }, {} as Record<string, {
+    date: string;
+    price: number;
+    changeType: string;
+    originalDate: string;
+  }>);
+
+  // Convert to array and sort by original date
+  const chartData = Object.values(groupedByDate).sort((a, b) => 
+    new Date(a.originalDate).getTime() - new Date(b.originalDate).getTime()
+  );
 
   // Calculate price change
   const firstPrice = data.history[0]?.price;
