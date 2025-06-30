@@ -188,6 +188,22 @@ export function PriceHistoryChart({
   const priceChange = lastPrice && firstPrice ? lastPrice - firstPrice : 0;
   const priceChangePercent = firstPrice ? (priceChange / firstPrice) * 100 : 0;
 
+  // Calculate Y-axis domain for better visibility of small changes
+  const prices = chartData.map(d => d.price);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceRange = maxPrice - minPrice;
+  
+  // If the price range is very small, add padding to make changes more visible
+  // Use at least 10% padding, or more if the range is very small
+  const paddingPercent = Math.max(0.1, priceRange < 0.1 ? 0.3 : 0.15);
+  const padding = Math.max(priceRange * paddingPercent, 0.01); // Minimum padding of 0.01
+  
+  const yAxisDomain = [
+    Math.max(0, minPrice - padding), // Don't go below 0
+    maxPrice + padding
+  ];
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -225,7 +241,7 @@ export function PriceHistoryChart({
       </CardHeader>
 
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-48 w-full">
+        <ChartContainer config={chartConfig} className="h-64 w-full">
           <AreaChart
             accessibilityLayer
             data={chartData}
@@ -238,8 +254,10 @@ export function PriceHistoryChart({
           >
             <CartesianGrid
               vertical={false}
+              horizontal={true}
               stroke="hsl(var(--muted-foreground))"
-              strokeOpacity={0.1}
+              strokeOpacity={0.15}
+              strokeDasharray="2 2"
             />
             <XAxis
               dataKey="date"
@@ -254,10 +272,16 @@ export function PriceHistoryChart({
               axisLine={false}
               tickMargin={8}
               tickFormatter={(value) => formatPrice(value)}
+              domain={yAxisDomain}
+              tickCount={8}
             />
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent indicator="dot" hideLabel />}
+              content={<ChartTooltipContent 
+                indicator="dot" 
+                hideLabel 
+                formatter={(value, name) => [formatPrice(value as number), "Price"]}
+              />}
               animationDuration={0}
               isAnimationActive={false}
             />
@@ -265,18 +289,18 @@ export function PriceHistoryChart({
               dataKey="price"
               type="linear"
               fill="hsl(var(--chart-1))"
-              fillOpacity={0.1}
+              fillOpacity={0.15}
               stroke="hsl(var(--chart-1))"
-              strokeOpacity={0.3}
-              strokeWidth={1.5}
+              strokeOpacity={0.8}
+              strokeWidth={2}
               dot={{
                 fill: "hsl(var(--chart-1))",
                 strokeWidth: 0,
-                r: 4,
+                r: 5,
                 fillOpacity: 1,
               }}
               activeDot={{
-                r: 6,
+                r: 7,
                 strokeWidth: 0,
                 fill: "hsl(var(--chart-1))",
               }}

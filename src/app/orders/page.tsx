@@ -784,7 +784,7 @@ export default function OrdersPage() {
                               <Button
                                 size="sm"
                                 onClick={() => handleMarkReady(order.id)}
-                                className="h-6 w-16 text-xs px-2 py-1 bg-yellow-500/80 hover:bg-yellow-500 text-black"
+                                className="h-6 w-full text-xs px-2 py-1 bg-yellow-500/80 hover:bg-yellow-500 text-black"
                               >
                                 Ready
                               </Button>
