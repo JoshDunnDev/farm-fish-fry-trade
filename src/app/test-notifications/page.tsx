@@ -107,7 +107,7 @@ export default function TestNotificationsPage() {
             </Button>
           </div>
 
-          <div className="pt-4 border-t space-y-2">
+          <div className="pt-4 border-t border-muted-foreground/20 space-y-2">
             <Button
               onClick={handleClearAll}
               variant="outline"
@@ -135,7 +135,7 @@ export default function TestNotificationsPage() {
               <li>Real-time monitoring via Server-Sent Events (SSE)</li>
               <li>Manage notification preferences in your profile settings</li>
             </ul>
-            <div className="mt-4 p-3 bg-muted/50 rounded-lg border">
+            <div className="mt-4 p-3 bg-muted/50 rounded-lg border border-muted-foreground/20">
               <p className="text-sm">
                 <strong>Note:</strong> You can enable/disable notifications and
                 audio alerts in your{" "}

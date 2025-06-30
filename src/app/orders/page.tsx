@@ -603,10 +603,10 @@ export default function OrdersPage() {
         <span className="px-2 py-1 bg-primary/20 text-primary border border-primary/30 rounded">
           Ready: {counts.readyToTrade}
         </span>
-        <span className="px-2 py-1 bg-muted text-muted-foreground border border-border rounded">
+                        <span className="px-2 py-1 bg-muted text-muted-foreground border border-muted-foreground/20 rounded">
           Fulfilled: {counts.fulfilled}
         </span>
-        <span className="px-2 py-1 bg-secondary text-secondary-foreground border border-border rounded">
+                        <span className="px-2 py-1 bg-secondary text-secondary-foreground border border-muted-foreground/20 rounded">
           Buy: {counts.buy} | Sell: {counts.sell}
         </span>
       </div>
@@ -638,7 +638,7 @@ export default function OrdersPage() {
                     <col className="w-32" />
                     <col className="w-28" />
                   </colgroup>
-                  <thead className="border-b bg-muted/50">
+                  <thead className="border-b border-muted-foreground/20 bg-muted/50">
                     <tr>
                       <th className="text-left px-3 py-2 font-medium">
                         Item & Date
@@ -669,7 +669,7 @@ export default function OrdersPage() {
                     {filteredOrders.map((order, index) => (
                       <tr
                         key={order.id}
-                        className={`border-b hover:bg-muted/30 ${
+                        className={`border-b border-muted-foreground/20 hover:bg-muted/30 ${
                           index % 2 === 0 ? "bg-background" : "bg-muted/10"
                         }`}
                       >
@@ -711,7 +711,7 @@ export default function OrdersPage() {
                             </span>
                           )}
                           {order.status === "FULFILLED" && (
-                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground border border-border">
+                            <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground border border-muted-foreground/20">
                               Fulfilled
                             </span>
                           )}
@@ -808,7 +808,7 @@ export default function OrdersPage() {
 
               {/* Load More Button */}
               {hasMore && activeTab === "all" && (
-                <div className="flex justify-center py-4 border-t">
+                <div className="flex justify-center py-4 border-t border-muted-foreground/20">
                   <Button
                     variant="outline"
                     onClick={loadMore}

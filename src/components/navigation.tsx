@@ -20,7 +20,7 @@ export function Navigation() {
   // Show loading placeholder during session loading to prevent flash
   if (status === "loading") {
     return (
-      <nav className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
+      <nav className="border-b border-muted-foreground/20 bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
         <div className="flex h-16 items-center justify-between px-6">
           <div className="flex items-center space-x-6">
             <div className="text-xl font-bold">FarmyFishFry</div>
@@ -42,7 +42,7 @@ export function Navigation() {
   }
 
   return (
-    <nav className="border-b bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
+    <nav className="border-b border-muted-foreground/20 bg-card/50 backdrop-blur supports-[backdrop-filter]:bg-card/50">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center space-x-6">
           <Link href="/" className="text-xl font-bold">

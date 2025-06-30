@@ -42,7 +42,7 @@ function NotificationItem({
 
   return (
     <div
-      className="p-3 border-b last:border-b-0 hover:bg-muted/50 cursor-pointer"
+                className="p-3 border-b border-muted-foreground/20 last:border-b-0 hover:bg-muted/50 cursor-pointer"
       onClick={handleClick}
     >
       <div className="flex items-start gap-3">
@@ -155,7 +155,7 @@ export function NotificationCenter() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-0">
-        <div className="p-3 border-b">
+        <div className="p-3 border-b border-muted-foreground/20">
           <div className="flex items-center justify-between">
             <DropdownMenuLabel className="p-0">
               Notifications

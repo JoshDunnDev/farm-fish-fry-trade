@@ -100,26 +100,37 @@ async function getMarketStats() {
 }
 
 async function getLeaderboards() {
-  // Get fulfilled orders to calculate volume per trader
-  const fulfilledOrdersByTrader = await prisma.order.findMany({
+  // Get fulfilled orders to calculate volume per trader (both as creator and claimer)
+  const fulfilledOrders = await prisma.order.findMany({
     where: {
       status: "FULFILLED",
     },
     select: {
       creatorId: true,
+      claimerId: true,
       pricePerUnit: true,
       amount: true,
     },
   });
 
-  // Calculate volume per trader
+  // Calculate volume per trader (counting both created and fulfilled orders)
   const traderVolumeMap = new Map<string, number>();
-  fulfilledOrdersByTrader.forEach((order) => {
+  fulfilledOrders.forEach((order) => {
     const volume = order.pricePerUnit * order.amount;
+    
+    // Add volume for creator
     traderVolumeMap.set(
       order.creatorId,
       (traderVolumeMap.get(order.creatorId) || 0) + volume
     );
+    
+    // Add volume for claimer (if exists)
+    if (order.claimerId) {
+      traderVolumeMap.set(
+        order.claimerId,
+        (traderVolumeMap.get(order.claimerId) || 0) + volume
+      );
+    }
   });
 
   // Sort traders by volume and get top 10
@@ -292,7 +303,7 @@ export default async function StatsPage() {
               {marketStats.topItems.map((item, index) => (
                 <div
                   key={index}
-                  className="flex justify-between items-center p-4 border rounded-lg"
+                  className="flex justify-between items-center p-4 border border-muted-foreground/20 rounded-lg bg-muted/20 hover:bg-muted/30 transition-colors"
                 >
                   <div>
                     <span className="font-medium capitalize">
@@ -328,7 +339,7 @@ export default async function StatsPage() {
                 {leaderboards.tradersWithNames.map((trader, index) => (
                   <div
                     key={index}
-                    className="flex justify-between items-center py-2 border-b last:border-b-0"
+                    className="flex justify-between items-center py-2 border-b border-muted-foreground/20 last:border-b-0"
                   >
                     <span className="font-medium">
                       #{index + 1} {trader.name}
@@ -357,7 +368,7 @@ export default async function StatsPage() {
                 {leaderboards.fulfillersWithNames.map((fulfiller, index) => (
                   <div
                     key={index}
-                    className="flex justify-between items-center py-2 border-b last:border-b-0"
+                    className="flex justify-between items-center py-2 border-b border-muted-foreground/20 last:border-b-0"
                   >
                     <span className="font-medium">
                       #{index + 1} {fulfiller.name}
@@ -386,7 +397,7 @@ export default async function StatsPage() {
                 {leaderboards.activeTraderNames.map((trader, index) => (
                   <div
                     key={index}
-                    className="flex justify-between items-center py-2 border-b last:border-b-0"
+                    className="flex justify-between items-center py-2 border-b border-muted-foreground/20 last:border-b-0"
                   >
                     <span className="font-medium">
                       #{index + 1} {trader.name}

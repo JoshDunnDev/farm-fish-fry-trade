@@ -309,7 +309,7 @@ export default function AdminOrdersPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="border-b bg-muted/50">
+                <thead className="border-b border-muted-foreground/20 bg-muted/50">
                   <tr>
                     <th className="text-left px-4 py-3 font-medium">Order ID</th>
                     <th className="text-left px-4 py-3 font-medium">Item</th>
@@ -328,7 +328,7 @@ export default function AdminOrdersPage() {
                   {filteredOrders.map((order, index) => (
                     <tr
                       key={order.id}
-                      className={`border-b hover:bg-muted/30 ${
+                      className={`border-b border-muted-foreground/20 hover:bg-muted/30 ${
                         index % 2 === 0 ? "bg-background" : "bg-muted/10"
                       }`}
                     >

@@ -361,7 +361,7 @@ export default function CreateOrderPage() {
                 </div>
               </div>
 
-              <div className="bg-secondary/10 p-4 rounded-md border">
+              <div className="bg-secondary/10 p-4 rounded-md border border-muted-foreground/20">
                 <div className="flex justify-between items-center">
                   <div className="text-sm text-muted-foreground">
                     {formData.orderType.charAt(0).toUpperCase() +

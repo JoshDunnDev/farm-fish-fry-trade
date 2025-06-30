@@ -202,7 +202,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Notification Settings Section */}
-              <div className="space-y-4 pt-4 border-t">
+              <div className="space-y-4 pt-4 border-t border-muted-foreground/20">
                 <div>
                   <h3 className="text-lg font-medium">Notification Settings</h3>
                   <p className="text-sm text-muted-foreground">

@@ -135,7 +135,7 @@ export default function PricingPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b">
+                <tr className="border-b border-muted-foreground/20">
                   <th className="text-left py-3 px-4 font-medium">Item</th>
                   {availableTiers.map((tier) => (
                     <th
@@ -161,7 +161,7 @@ export default function PricingPage() {
                   filteredItems.map((item, index) => (
                     <tr
                       key={item.name}
-                      className={`border-b ${
+                      className={`border-b border-muted-foreground/20 ${
                         index % 2 === 0 ? "bg-muted/20" : ""
                       } hover:bg-muted/30`}
                     >

@@ -546,7 +546,7 @@ export default function AdminPricingPage() {
                           </div>
 
                           {availableNewTiers.length > 0 && (
-                            <div className="pt-1 border-t">
+                            <div className="pt-1 border-t border-muted-foreground/20">
                               <Label className="text-xs text-muted-foreground mb-1 block">
                                 Add tier:
                               </Label>
@@ -578,7 +578,7 @@ export default function AdminPricingPage() {
           {/* Divider between sections */}
           {editableItems.some((item) => item.isNew) &&
             editableItems.some((item) => !item.isNew) && (
-              <div className="border-t border-border my-6"></div>
+              <div className="border-t border-muted-foreground/20 my-6"></div>
             )}
 
           {/* Existing Items Section */}
@@ -678,7 +678,7 @@ export default function AdminPricingPage() {
                           </div>
 
                           {availableNewTiers.length > 0 && (
-                            <div className="pt-1 border-t">
+                            <div className="pt-1 border-t border-muted-foreground/20">
                               <Label className="text-xs text-muted-foreground mb-1 block">
                                 Add tier:
                               </Label>
