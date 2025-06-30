@@ -249,9 +249,10 @@ export default function ProfilePage() {
                   {!profileData.notificationsEnabled && (
                     <div className="p-3 bg-muted/50 rounded-lg">
                       <p className="text-sm text-muted-foreground">
-                        You won't receive any notifications while they're
-                        disabled. This includes browser notifications, audio
-                        alerts, and the notification center.
+                        You won&apos;t receive any notifications while
+                        they&apos;re disabled. This includes browser
+                        notifications, audio alerts, and the notification
+                        center.
                       </p>
                     </div>
                   )}

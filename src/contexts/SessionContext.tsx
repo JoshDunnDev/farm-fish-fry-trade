@@ -6,6 +6,7 @@ import React, {
   useState,
   useEffect,
   useRef,
+  useCallback,
 } from "react";
 import { useSession as useNextAuthSession } from "next-auth/react";
 
@@ -29,7 +30,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const hasCheckedAdminRef = useRef(false);
   const lastSessionIdRef = useRef<string | null>(null);
 
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = useCallback(async () => {
     if (!session?.user || isCheckingAdminRef.current) return;
 
     // Check if this is the same session we already checked
@@ -57,7 +58,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setAdminLoading(false);
       isCheckingAdminRef.current = false;
     }
-  };
+  }, [session]);
 
   // Check admin status when session changes
   useEffect(() => {
@@ -79,7 +80,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       hasCheckedAdminRef.current = false;
       lastSessionIdRef.current = null;
     }
-  }, [session, status]);
+  }, [session, status, checkAdminStatus]);
 
   // Listen for admin status changes (from admin access page)
   useEffect(() => {
@@ -100,7 +101,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         handleAdminStatusChanged
       );
     };
-  }, [session]);
+  }, [session, checkAdminStatus]);
 
   const value = {
     session,

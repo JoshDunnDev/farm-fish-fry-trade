@@ -120,7 +120,7 @@ export default function CreateOrderPage() {
     if (status === "unauthenticated") {
       router.push("/auth/signin");
     }
-  }, [status]);
+  }, [status, router]);
 
   if (status === "loading" || pricingLoading) {
     return (

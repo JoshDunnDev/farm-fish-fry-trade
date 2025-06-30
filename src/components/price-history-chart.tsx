@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -58,14 +58,18 @@ export function PriceHistoryChart({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDays, setSelectedDays] = useState(30);
+  const isInitialLoadRef = useRef(true);
 
   const dayOptions = [7, 14, 30, 60, 90];
 
   useEffect(() => {
+    // Reset initial load flag when dependencies change
+    isInitialLoadRef.current = true;
+
     async function fetchPriceHistory() {
       try {
         // Only show loading state on initial load
-        if (data === null) {
+        if (isInitialLoadRef.current) {
           setLoading(true);
         }
         setError(null);
@@ -86,8 +90,9 @@ export function PriceHistoryChart({
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         // Only clear loading on initial load
-        if (data === null) {
+        if (isInitialLoadRef.current) {
           setLoading(false);
+          isInitialLoadRef.current = false;
         }
       }
     }
@@ -171,33 +176,43 @@ export function PriceHistoryChart({
   }
 
   // Format data for the chart - group by date and show latest price per day
-  const groupedByDate = data.history.reduce((acc, entry) => {
-    const dateKey = new Date(entry.date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-    
-    // Keep the latest entry for each date (entries are already sorted by createdAt)
-    if (!acc[dateKey] || new Date(entry.date) > new Date(acc[dateKey].originalDate)) {
-      acc[dateKey] = {
-        date: dateKey,
-        price: entry.price,
-        changeType: entry.changeType,
-        originalDate: entry.date,
-      };
-    }
-    
-    return acc;
-  }, {} as Record<string, {
-    date: string;
-    price: number;
-    changeType: string;
-    originalDate: string;
-  }>);
+  const groupedByDate = data.history.reduce(
+    (acc, entry) => {
+      const dateKey = new Date(entry.date).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+
+      // Keep the latest entry for each date (entries are already sorted by createdAt)
+      if (
+        !acc[dateKey] ||
+        new Date(entry.date) > new Date(acc[dateKey].originalDate)
+      ) {
+        acc[dateKey] = {
+          date: dateKey,
+          price: entry.price,
+          changeType: entry.changeType,
+          originalDate: entry.date,
+        };
+      }
+
+      return acc;
+    },
+    {} as Record<
+      string,
+      {
+        date: string;
+        price: number;
+        changeType: string;
+        originalDate: string;
+      }
+    >
+  );
 
   // Convert to array and sort by original date
-  const chartData = Object.values(groupedByDate).sort((a, b) => 
-    new Date(a.originalDate).getTime() - new Date(b.originalDate).getTime()
+  const chartData = Object.values(groupedByDate).sort(
+    (a, b) =>
+      new Date(a.originalDate).getTime() - new Date(b.originalDate).getTime()
   );
 
   // Calculate price change
@@ -208,19 +223,19 @@ export function PriceHistoryChart({
   const priceChangePercent = firstPrice ? (priceChange / firstPrice) * 100 : 0;
 
   // Calculate Y-axis domain for better visibility of small changes
-  const prices = chartData.map(d => d.price);
+  const prices = chartData.map((d) => d.price);
   const minPrice = Math.min(...prices);
   const maxPrice = Math.max(...prices);
   const priceRange = maxPrice - minPrice;
-  
+
   // If the price range is very small, add padding to make changes more visible
   // Use at least 10% padding, or more if the range is very small
   const paddingPercent = Math.max(0.1, priceRange < 0.1 ? 0.3 : 0.15);
   const padding = Math.max(priceRange * paddingPercent, 0.01); // Minimum padding of 0.01
-  
+
   const yAxisDomain = [
     Math.max(0, minPrice - padding), // Don't go below 0
-    maxPrice + padding
+    maxPrice + padding,
   ];
 
   return (
@@ -296,11 +311,16 @@ export function PriceHistoryChart({
             />
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent 
-                indicator="dot" 
-                hideLabel 
-                formatter={(value, name) => [formatPrice(value as number), "Price"]}
-              />}
+              content={
+                <ChartTooltipContent
+                  indicator="dot"
+                  hideLabel
+                  formatter={(value, name) => [
+                    formatPrice(value as number),
+                    "Price",
+                  ]}
+                />
+              }
               animationDuration={0}
               isAnimationActive={false}
             />

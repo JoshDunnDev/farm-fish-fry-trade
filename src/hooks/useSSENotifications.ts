@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { notificationManager } from "@/lib/notifications";
 
@@ -10,7 +10,47 @@ export function useSSENotifications() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const connectingRef = useRef<boolean>(false);
 
-  const connect = () => {
+  const handleOrderNotification = useCallback((data: any) => {
+    const { notificationType, orderId, title, message, orderDetails } = data;
+
+    // Check if notifications are enabled
+    const settings = notificationManager.getSettings();
+
+    if (!settings.enabled) {
+      return;
+    }
+
+    switch (notificationType) {
+      case "order_claimed":
+        notificationManager.orderClaimed(
+          orderId,
+          orderDetails,
+          extractClaimerName(message)
+        );
+        break;
+
+      case "order_ready":
+        notificationManager.orderReady(orderId, orderDetails);
+        break;
+
+      case "order_cancelled":
+        notificationManager.orderCancelled(orderId, orderDetails);
+        break;
+
+      default:
+        // Fallback: create a generic notification using order_claimed type
+        notificationManager.addNotification({
+          type: "order_claimed",
+          title,
+          message,
+          orderId,
+          orderDetails,
+          playSound: true,
+        });
+    }
+  }, []);
+
+  const connect = useCallback(() => {
     if (!session?.user?.id) return;
 
     // Prevent duplicate connections
@@ -72,47 +112,7 @@ export function useSSENotifications() {
     } catch (error) {
       console.error("Failed to establish SSE connection:", error);
     }
-  };
-
-  const handleOrderNotification = (data: any) => {
-    const { notificationType, orderId, title, message, orderDetails } = data;
-
-    // Check if notifications are enabled
-    const settings = notificationManager.getSettings();
-
-    if (!settings.enabled) {
-      return;
-    }
-
-    switch (notificationType) {
-      case "order_claimed":
-        notificationManager.orderClaimed(
-          orderId,
-          orderDetails,
-          extractClaimerName(message)
-        );
-        break;
-
-      case "order_ready":
-        notificationManager.orderReady(orderId, orderDetails);
-        break;
-
-      case "order_cancelled":
-        notificationManager.orderCancelled(orderId, orderDetails);
-        break;
-
-      default:
-        // Fallback: create a generic notification using order_claimed type
-        notificationManager.addNotification({
-          type: "order_claimed",
-          title,
-          message,
-          orderId,
-          orderDetails,
-          playSound: true,
-        });
-    }
-  };
+  }, [session?.user?.id, handleOrderNotification]);
 
   const extractClaimerName = (message: string): string => {
     // Extract claimer name from message like "John claimed your..."
@@ -135,7 +135,7 @@ export function useSSENotifications() {
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, connect]);
 
   // Handle page visibility changes
   useEffect(() => {
@@ -157,5 +157,5 @@ export function useSSENotifications() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [session?.user?.id]);
+  }, [connect]);
 }

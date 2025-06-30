@@ -42,7 +42,7 @@ function NotificationItem({
 
   return (
     <div
-                className="p-3 border-b border-muted-foreground/20 last:border-b-0 hover:bg-muted/50 cursor-pointer"
+      className="p-3 border-b border-muted-foreground/20 last:border-b-0 hover:bg-muted/50 cursor-pointer"
       onClick={handleClick}
     >
       <div className="flex items-start gap-3">
@@ -194,7 +194,7 @@ export function NotificationCenter() {
               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No notifications yet</p>
               <p className="text-xs mt-1">
-                You'll be notified when someone interacts with your orders
+                You&apos;ll be notified when someone interacts with your orders
               </p>
             </div>
           ) : (

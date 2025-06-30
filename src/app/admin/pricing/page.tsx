@@ -375,11 +375,16 @@ export default function AdminPricingPage() {
     <div className="container mx-auto px-6 py-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Price Management</h1>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Price Management
+          </h1>
           <p className="text-sm text-muted-foreground">
             Update prices for all items and tiers
             {pricingData && (
-              <span className="text-xs"> • Last saved: {pricingData.lastUpdated}</span>
+              <span className="text-xs">
+                {" "}
+                • Last saved: {pricingData.lastUpdated}
+              </span>
             )}
           </p>
         </div>
@@ -727,14 +732,18 @@ export default function AdminPricingPage() {
         <h3 className="font-semibold mb-2 text-foreground">How it works:</h3>
         <ul className="text-sm text-muted-foreground space-y-1">
           <li>
-            • Make changes to prices and click "Save All Changes" to apply them
+            • Make changes to prices and click &quot;Save All Changes&quot; to
+            apply them
           </li>
           <li>• Changes are only saved when you click the save button</li>
           <li>
             • You can add/remove tiers for each item (game supports tiers 1-10)
           </li>
           <li>• Users will see new prices immediately after saving</li>
-          <li>• Click "Cancel Changes" to revert all unsaved modifications</li>
+          <li>
+            • Click &quot;Cancel Changes&quot; to revert all unsaved
+            modifications
+          </li>
         </ul>
       </div>
 

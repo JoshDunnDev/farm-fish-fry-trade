@@ -55,7 +55,7 @@ export function usePricing(): UsePricingReturn {
 
     hasInitializedRef.current = true;
     fetchData();
-  }, []); // Empty dependency array to run only once
+  }, [fetchData]); // Include fetchData dependency
 
   return {
     pricingData,

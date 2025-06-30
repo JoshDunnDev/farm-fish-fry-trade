@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { notificationManager } from "@/lib/notifications";
 
@@ -25,7 +25,7 @@ export function useOrderNotifications() {
   const previousOrdersRef = useRef<Map<string, Order>>(new Map());
   const isInitializedRef = useRef(false);
 
-  const pollForOrderUpdates = async () => {
+  const pollForOrderUpdates = useCallback(async () => {
     if (!session?.user?.id) return;
 
     try {
@@ -60,7 +60,7 @@ export function useOrderNotifications() {
     } catch (error) {
       console.error("Failed to poll order updates:", error);
     }
-  };
+  }, [session?.user?.id]);
 
   const handleOrderStatusChange = (
     previousOrder: Order,
@@ -130,7 +130,7 @@ export function useOrderNotifications() {
     return () => {
       clearInterval(interval);
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, pollForOrderUpdates]);
 
   // Also poll when the page becomes visible (user switches back to tab)
   useEffect(() => {
@@ -144,5 +144,5 @@ export function useOrderNotifications() {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [session?.user?.id]);
+  }, [session?.user?.id, pollForOrderUpdates]);
 }
