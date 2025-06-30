@@ -138,6 +138,11 @@ export function formatPrice(price: number): string {
     : `${price.toFixed(3).replace(/\.?0+$/, "")} HC`;
 }
 
+// Format price as whole HC values (for stats/summary displays)
+export function formatPriceWhole(price: number): string {
+  return `${Math.round(price).toLocaleString()} HC`;
+}
+
 // Get price suggestion for order creation
 export async function getPriceSuggestion(
   itemName: string,

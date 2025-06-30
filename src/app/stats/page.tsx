@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { formatPrice } from "@/lib/pricing";
+import { formatPrice, formatPriceWhole } from "@/lib/pricing";
 
 async function getMarketStats() {
   // Total orders by status
@@ -230,7 +230,7 @@ export default async function StatsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatPrice(marketStats.volumeStats.totalVolume)}
+              {formatPriceWhole(marketStats.volumeStats.totalVolume)}
             </div>
             <p className="text-xs text-muted-foreground">
               {marketStats.volumeStats.totalAmount} items traded
@@ -299,7 +299,7 @@ export default async function StatsPage() {
                       #{index + 1} {item.itemName}
                     </span>
                     <p className="text-xs text-muted-foreground">
-                      {item._count.id} orders • {formatPrice(item.totalVolume)}{" "}
+                      {item._count.id} orders • {formatPriceWhole(item.totalVolume)}{" "}
                       volume
                     </p>
                   </div>
@@ -334,7 +334,7 @@ export default async function StatsPage() {
                       #{index + 1} {trader.name}
                     </span>
                     <span className="text-foreground font-semibold font-mono">
-                      {formatPrice(trader.totalVolume)}
+                      {formatPriceWhole(trader.totalVolume)}
                     </span>
                   </div>
                 ))}
