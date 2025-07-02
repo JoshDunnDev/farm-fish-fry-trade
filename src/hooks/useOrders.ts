@@ -171,6 +171,73 @@ export function useOrders(): UseOrdersReturn {
     }
   }, [update, refetch]);
 
+  // Listen for real-time order status updates from notifications
+  useEffect(() => {
+    const handleOrderStatusUpdate = (event: CustomEvent) => {
+      const { orderId, notificationType, orderDetails, claimer } = event.detail;
+      
+      // Update the order status based on the notification type
+      let statusUpdate: Partial<Order> = {};
+      
+      switch (notificationType) {
+        case "order_claimed":
+          // Order was claimed - could be IN_PROGRESS or READY_TO_TRADE
+          // We'll determine based on order type
+          if (orderDetails.orderType === "SELL") {
+            statusUpdate = { 
+              status: "READY_TO_TRADE",
+              claimer: claimer ? {
+                id: claimer.id,
+                discordName: claimer.name || "Unknown",
+                inGameName: claimer.inGameName
+              } : null
+            };
+          } else {
+            statusUpdate = { 
+              status: "IN_PROGRESS",
+              claimer: claimer ? {
+                id: claimer.id,
+                discordName: claimer.name || "Unknown", 
+                inGameName: claimer.inGameName
+              } : null
+            };
+          }
+          break;
+          
+        case "order_ready":
+          statusUpdate = { status: "READY_TO_TRADE" };
+          break;
+          
+        case "order_completed":
+          // Remove completed orders from the list since they're typically filtered out
+          // We'll use a special flag to indicate this order should be removed
+          updateOrder(orderId, { status: "FULFILLED" });
+          // Remove the order after a short delay to allow the status update to be seen
+          setTimeout(() => {
+            removeOrder(orderId);
+          }, 1000);
+          return; // Don't apply statusUpdate since we're handling this specially
+          
+        case "order_cancelled":
+          statusUpdate = { status: "OPEN", claimer: null };
+          break;
+      }
+      
+      // Apply the update to the local state
+      if (Object.keys(statusUpdate).length > 0) {
+        updateOrder(orderId, statusUpdate);
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('orderStatusUpdate', handleOrderStatusUpdate as EventListener);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('orderStatusUpdate', handleOrderStatusUpdate as EventListener);
+    };
+  }, [updateOrder, removeOrder]);
+
   return {
     orders,
     loading,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PrismaClient } from "@prisma/client";
+import { NotificationService } from "@/lib/notification-service";
 
 const prisma = new PrismaClient();
 
@@ -53,6 +54,7 @@ export async function POST(
     }
 
     // Complete the order
+    const previousStatus = order.status;
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
@@ -65,6 +67,9 @@ export async function POST(
         claimer: true,
       },
     });
+
+    // Send notification for order completion
+    await NotificationService.handleOrderUpdate(orderId, "FULFILLED", previousStatus);
 
     return NextResponse.json(updatedOrder);
   } catch (error) {

@@ -14,6 +14,7 @@ export interface OrderChangeEvent {
     orderType: string;
   };
   claimer?: {
+    id: string;
     name: string | null;
     inGameName: string | null;
   } | null;
@@ -89,8 +90,17 @@ export class NotificationService {
         break;
 
       case "FULFILLED":
-        // Don't notify for completion - it happens immediately during trade
-        return;
+        // Notify when order is completed
+        if (["IN_PROGRESS", "READY_TO_TRADE"].includes(previousStatus)) {
+          notificationType = "order_completed";
+          title = "Order Completed";
+          message = `Your ${orderDetails.orderType.toLowerCase()} order for ${
+            orderDetails.amount
+          }x ${orderDetails.itemName} (T${orderDetails.tier}) has been completed`;
+        } else {
+          return;
+        }
+        break;
 
       default:
         return;
@@ -104,6 +114,7 @@ export class NotificationService {
       title,
       message,
       orderDetails,
+      claimer,
       timestamp: new Date().toISOString(),
     };
 
@@ -128,6 +139,7 @@ export class NotificationService {
           },
           claimer: {
             select: {
+              id: true,
               name: true,
               inGameName: true,
             },

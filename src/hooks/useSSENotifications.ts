@@ -11,7 +11,7 @@ export function useSSENotifications() {
   const connectingRef = useRef<boolean>(false);
 
   const handleOrderNotification = useCallback((data: any) => {
-    const { notificationType, orderId, title, message, orderDetails } = data;
+    const { notificationType, orderId, title, message, orderDetails, claimer } = data;
 
     // Check if notifications are enabled
     const settings = notificationManager.getSettings();
@@ -19,6 +19,19 @@ export function useSSENotifications() {
     if (!settings.enabled) {
       return;
     }
+
+    // Trigger order status update via custom event
+    // This allows the orders hook to update the UI in real-time
+    const orderUpdateEvent = new CustomEvent('orderStatusUpdate', {
+      detail: {
+        orderId,
+        notificationType,
+        orderDetails,
+        claimer,
+        timestamp: data.timestamp
+      }
+    });
+    window.dispatchEvent(orderUpdateEvent);
 
     switch (notificationType) {
       case "order_claimed":
@@ -31,6 +44,10 @@ export function useSSENotifications() {
 
       case "order_ready":
         notificationManager.orderReady(orderId, orderDetails);
+        break;
+
+      case "order_completed":
+        notificationManager.orderCompleted(orderId, orderDetails);
         break;
 
       case "order_cancelled":
