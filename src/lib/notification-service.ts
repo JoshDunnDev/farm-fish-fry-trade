@@ -31,7 +31,9 @@ export class NotificationService {
     } = orderChangeEvent;
 
     // Only notify the order creator
-    if (!creatorId) return;
+    if (!creatorId) {
+      return;
+    }
 
     let notificationType: string;
     let title: string;
@@ -61,6 +63,14 @@ export class NotificationService {
           }x ${orderDetails.itemName} (T${
             orderDetails.tier
           }) is ready for pickup`;
+        } else if (previousStatus === "OPEN") {
+          // Handle SELL orders that go directly from OPEN to READY_TO_TRADE
+          notificationType = "order_claimed";
+          const claimerName = claimer?.inGameName || claimer?.name || "Someone";
+          title = "Order Claimed & Ready";
+          message = `${claimerName} claimed your ${orderDetails.orderType.toLowerCase()} order for ${
+            orderDetails.amount
+          }x ${orderDetails.itemName} (T${orderDetails.tier}) and it's ready for pickup`;
         } else {
           return;
         }
@@ -125,7 +135,9 @@ export class NotificationService {
         },
       });
 
-      if (!order) return;
+      if (!order) {
+        return;
+      }
 
       // If we don't have the previous status, try to determine it
       if (!previousStatus) {
