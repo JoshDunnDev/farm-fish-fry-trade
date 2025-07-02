@@ -90,6 +90,34 @@ services:
         reservations:
           memory: 512M # Reserve minimum memory
 
+  # Docker Cleanup Service - Automatically removes old containers, images, etc.
+  cleanup:
+    image: clockworksoul/docker-gc-cron:latest
+    restart: unless-stopped
+    environment:
+      CRON: "0 3 * * *"  # Run at 3 AM daily
+      FORCE_IMAGE_REMOVAL: 1
+      FORCE_CONTAINER_REMOVAL: 1
+      GRACE_PERIOD_SECONDS: 3600  # 1 hour grace period
+      DRY_RUN: 0  # Set to 1 for testing (won't actually delete)
+      CLEAN_UP_VOLUMES: 1  # Also clean up unused volumes
+      EXCLUDE_LABEL_KEY: "cleanup.exclude"  # Don't remove containers with this label
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - app-network
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager  # Only run on manager node
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 3
+
 volumes:
   postgres_data:
     driver: local
