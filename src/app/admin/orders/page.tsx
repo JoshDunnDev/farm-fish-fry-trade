@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import { AdminEditOrderModal } from "@/components/admin-edit-order-modal";
 import { formatPrice } from "@/lib/pricing";
 
 interface Order {
@@ -58,6 +59,17 @@ export default function AdminOrdersPage() {
 
   // Delete modal state
   const [deleteModal, setDeleteModal] = useState<{
+    isOpen: boolean;
+    order: Order | null;
+    isLoading: boolean;
+  }>({
+    isOpen: false,
+    order: null,
+    isLoading: false,
+  });
+
+  // Edit modal state
+  const [editModal, setEditModal] = useState<{
     isOpen: boolean;
     order: Order | null;
     isLoading: boolean;
@@ -133,6 +145,14 @@ export default function AdminOrdersPage() {
     });
   };
 
+  const handleEditOrder = (order: Order) => {
+    setEditModal({
+      isOpen: true,
+      order,
+      isLoading: false,
+    });
+  };
+
   const confirmDeleteOrder = async () => {
     if (!deleteModal.order) return;
 
@@ -168,6 +188,56 @@ export default function AdminOrdersPage() {
         order: null,
         isLoading: false,
       });
+    }
+  };
+
+  const confirmEditOrder = async (editedOrder: Partial<Order>) => {
+    if (!editModal.order) return;
+
+    setEditModal((prev) => ({ ...prev, isLoading: true }));
+
+    try {
+      const response = await fetch(`/api/admin/orders/${editModal.order.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editedOrder),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to edit order");
+      }
+
+      const result = await response.json();
+      const updatedOrder = result.order;
+
+      // Update the order in the local state
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === editModal.order!.id ? updatedOrder : order
+        )
+      );
+
+      setMessage(`Order ${editModal.order.id} updated successfully`);
+      setTimeout(() => setMessage(""), 3000);
+
+      // Close modal
+      setEditModal({
+        isOpen: false,
+        order: null,
+        isLoading: false,
+      });
+    } catch (err) {
+      setMessage(
+        `Error editing order: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
+      setTimeout(() => setMessage(""), 5000);
+    } finally {
+      setEditModal((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -391,14 +461,24 @@ export default function AdminOrdersPage() {
                         {formatDateTime(order.createdAt)}
                       </td>
                       <td className="px-4 py-3">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteOrder(order)}
-                          className="h-8 px-3 text-xs"
-                        >
-                          Delete
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditOrder(order)}
+                            className="h-8 px-3 text-xs"
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteOrder(order)}
+                            className="h-8 px-3 text-xs"
+                          >
+                            Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -408,6 +488,17 @@ export default function AdminOrdersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Order Modal */}
+      <AdminEditOrderModal
+        isOpen={editModal.isOpen}
+        onClose={() =>
+          setEditModal({ isOpen: false, order: null, isLoading: false })
+        }
+        onConfirm={confirmEditOrder}
+        order={editModal.order}
+        isLoading={editModal.isLoading}
+      />
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
