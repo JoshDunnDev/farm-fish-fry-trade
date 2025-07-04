@@ -77,6 +77,13 @@ export function AdminEditOrderModal({
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [availableItems, setAvailableItems] = useState<string[]>([]);
+  
+  // Track if user has manually edited the price
+  const [userEditedPrice, setUserEditedPrice] = useState(false);
+  // Track if the form has been initialized (to prevent auto-population on initial load)
+  const [formInitialized, setFormInitialized] = useState(false);
+  // Track if user has changed the tier or item (to allow auto-population only after changes)
+  const [fieldsChanged, setFieldsChanged] = useState(false);
 
   // Use pricing hook to get available items
   const { pricingData, loading: pricingLoading } = usePricing();
@@ -126,18 +133,43 @@ export function AdminEditOrderModal({
         status: order.status,
         claimerId: order.claimer?.id || "none",
       });
+      // Reset tracking flags when order changes
+      setUserEditedPrice(false);
+      setFieldsChanged(false);
+      setFormInitialized(true);
     }
   }, [order]);
 
-  // Auto-update price when item or tier changes
+  // Reset state when modal closes
   useEffect(() => {
-    if (currentPrice !== null && formData.itemName && formData.tier) {
+    if (!isOpen) {
+      setUserEditedPrice(false);
+      setFieldsChanged(false);
+      setFormInitialized(false);
+    }
+  }, [isOpen]);
+
+  // Auto-update price when item or tier changes (but only after user changes)
+  useEffect(() => {
+    if (!order || !formInitialized) return;
+
+    // Only auto-populate if:
+    // 1. User hasn't manually edited the price
+    // 2. User has changed item/tier (not initial load)
+    // 3. We have pricing data for the item/tier
+    if (
+      !userEditedPrice && 
+      fieldsChanged &&
+      currentPrice !== null && 
+      formData.itemName && 
+      formData.tier
+    ) {
       setFormData(prev => ({
         ...prev,
         pricePerUnit: currentPrice
       }));
     }
-  }, [currentPrice, formData.itemName, formData.tier]);
+  }, [currentPrice, formData.itemName, formData.tier, userEditedPrice, fieldsChanged, formInitialized, order]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,6 +242,26 @@ export function AdminEditOrderModal({
       : `${price.toFixed(3).replace(/\.?0+$/, "")} HC`;
   };
 
+  const handleItemNameChange = (value: string) => {
+    setFormData({ ...formData, itemName: value });
+    setFieldsChanged(true);
+    setUserEditedPrice(false); // Reset price edit flag when item changes
+  };
+
+  const handleTierChange = (value: string) => {
+    setFormData({ ...formData, tier: parseInt(value) });
+    setFieldsChanged(true);
+    setUserEditedPrice(false); // Reset price edit flag when tier changes
+  };
+
+  const handlePriceChange = (value: string) => {
+    setFormData({
+      ...formData,
+      pricePerUnit: parseFloat(value) || 0,
+    });
+    setUserEditedPrice(true); // Mark that user has manually edited the price
+  };
+
   const getUserDisplayName = (user: User) => {
     return user.inGameName || user.discordName;
   };
@@ -232,9 +284,7 @@ export function AdminEditOrderModal({
               <Label htmlFor="itemName">Item Name</Label>
               <Select
                 value={formData.itemName}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, itemName: value })
-                }
+                onValueChange={handleItemNameChange}
                 disabled={isLoading || pricingLoading}
               >
                 <SelectTrigger>
@@ -254,9 +304,7 @@ export function AdminEditOrderModal({
               <Label htmlFor="tier">Tier</Label>
               <Select
                 value={formData.tier.toString()}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, tier: parseInt(value) })
-                }
+                onValueChange={handleTierChange}
                 disabled={isLoading}
               >
                 <SelectTrigger>
@@ -347,12 +395,12 @@ export function AdminEditOrderModal({
                 min="0.001"
                 step="0.001"
                 value={formData.pricePerUnit}
-                readOnly
-                className="bg-muted cursor-not-allowed"
+                onChange={(e) => handlePriceChange(e.target.value)}
                 disabled={isLoading}
+                required
               />
               <p className="text-xs text-muted-foreground">
-                Auto-set based on pricing page
+                Auto-filled from pricing page, but you can edit if needed
               </p>
             </div>
           </div>

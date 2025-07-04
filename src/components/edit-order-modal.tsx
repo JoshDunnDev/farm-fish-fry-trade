@@ -71,6 +71,12 @@ export function EditOrderModal({
 
   // Ref to prevent unnecessary price updates
   const lastPriceUpdateRef = useRef<string>("");
+  // Track if user has manually edited the price
+  const [userEditedPrice, setUserEditedPrice] = useState(false);
+  // Track if the form has been initialized (to prevent auto-population on initial load)
+  const [formInitialized, setFormInitialized] = useState(false);
+  // Track if user has changed the tier (to allow auto-population only after tier changes)
+  const [tierChanged, setTierChanged] = useState(false);
 
   // Use custom pricing hook
   const {
@@ -87,6 +93,8 @@ export function EditOrderModal({
     formData.tier
   );
 
+
+
   // Reset form when order changes
   useEffect(() => {
     if (order) {
@@ -96,12 +104,27 @@ export function EditOrderModal({
         amount: order.amount,
         orderType: order.orderType,
       });
+      // Reset user edit flag, tier changed flag, and price update ref when order changes
+      setUserEditedPrice(false);
+      setTierChanged(false);
+      lastPriceUpdateRef.current = "";
+      setFormInitialized(true);
     }
   }, [order]);
 
-  // Auto-populate price when tier changes
+  // Reset state when modal closes
   useEffect(() => {
-    if (!order) return;
+    if (!isOpen) {
+      setUserEditedPrice(false);
+      setTierChanged(false);
+      lastPriceUpdateRef.current = "";
+      setFormInitialized(false);
+    }
+  }, [isOpen]);
+
+  // Auto-populate price when tier changes (but only if user hasn't manually edited it)
+  useEffect(() => {
+    if (!order || !formInitialized) return;
 
     const newPriceKey = `${order.itemName}-${formData.tier}-${currentPrice}`;
 
@@ -110,29 +133,23 @@ export function EditOrderModal({
       return;
     }
 
-    if (currentPrice !== null) {
-      const newPrice = currentPrice;
-      if (formData.pricePerUnit !== newPrice) {
-        setFormData((prev) => ({
-          ...prev,
-          pricePerUnit: newPrice,
-        }));
-        lastPriceUpdateRef.current = newPriceKey;
-      }
-    } else if (
-      pricingData &&
-      order.itemName &&
-      formData.tier &&
-      formData.pricePerUnit !== 0
+    // Only auto-populate if:
+    // 1. User hasn't manually edited the price
+    // 2. User has changed the tier (not initial load)
+    // 3. We have pricing data for the new tier
+    if (
+      !userEditedPrice && 
+      tierChanged &&
+      currentPrice !== null
     ) {
-      // Clear price if tier not available for this item
+      // Auto-populate without triggering the manual edit flag
       setFormData((prev) => ({
         ...prev,
-        pricePerUnit: 0,
+        pricePerUnit: currentPrice,
       }));
       lastPriceUpdateRef.current = newPriceKey;
     }
-  }, [currentPrice, pricingData, order, formData.tier, formData.pricePerUnit]);
+  }, [currentPrice, pricingData, order, formData.tier, userEditedPrice, formInitialized, tierChanged]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,12 +174,25 @@ export function EditOrderModal({
   };
 
   const handleTierChange = (value: number) => {
-    // Reset price when tier changes (will be auto-populated by useEffect)
+    // Update tier - price will be auto-populated by useEffect if appropriate
     setFormData((prev) => ({
       ...prev,
       tier: value,
-      pricePerUnit: 0,
     }));
+    
+    // Mark that the tier has been changed and reset flags to allow auto-population
+    setTierChanged(true);
+    setUserEditedPrice(false);
+    lastPriceUpdateRef.current = "";
+  };
+
+  const handlePriceChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      pricePerUnit: parseFloat(value) || 0,
+    }));
+    // Mark that user has manually edited the price
+    setUserEditedPrice(true);
   };
 
   const formatPrice = (price: number) => {
@@ -281,12 +311,12 @@ export function EditOrderModal({
                 min="0.001"
                 step="0.001"
                 value={formData.pricePerUnit}
-                readOnly
-                className="bg-muted cursor-not-allowed"
+                onChange={(e) => handlePriceChange(e.target.value)}
                 disabled={isLoading}
+                required
               />
               <p className="text-xs text-muted-foreground">
-                Auto-set based on pricing page
+                Auto-filled from pricing page, but you can edit if needed
               </p>
             </div>
           </div>

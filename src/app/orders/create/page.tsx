@@ -43,6 +43,8 @@ export default function CreateOrderPage() {
 
   // Ref to prevent unnecessary price updates
   const lastPriceUpdateRef = useRef<string>("");
+  // Track if user has manually edited the price
+  const [userEditedPrice, setUserEditedPrice] = useState(false);
 
   // Use custom pricing hook
   const {
@@ -88,7 +90,8 @@ export default function CreateOrderPage() {
 
     if (currentPrice !== null) {
       const newPrice = currentPrice.toString();
-      if (formData.pricePerUnit !== newPrice) {
+      // Only auto-populate if user hasn't manually edited the price
+      if (!userEditedPrice && formData.pricePerUnit !== newPrice) {
         setFormData((prev) => ({
           ...prev,
           pricePerUnit: newPrice,
@@ -99,9 +102,10 @@ export default function CreateOrderPage() {
       pricingData &&
       formData.itemName &&
       formData.tier &&
-      formData.pricePerUnit !== ""
+      formData.pricePerUnit !== "" &&
+      !userEditedPrice
     ) {
-      // Clear price if tier not available for this item
+      // Clear price if tier not available for this item, but only if user hasn't edited it
       setFormData((prev) => ({
         ...prev,
         pricePerUnit: "",
@@ -114,6 +118,7 @@ export default function CreateOrderPage() {
     formData.itemName,
     formData.tier,
     formData.pricePerUnit,
+    userEditedPrice,
   ]);
 
   useEffect(() => {
@@ -210,15 +215,21 @@ export default function CreateOrderPage() {
       tier: 1,
       pricePerUnit: "",
     }));
+    // Reset user edit flag and price update ref when item changes
+    setUserEditedPrice(false);
+    lastPriceUpdateRef.current = "";
   };
 
   const handleTierChange = (value: number) => {
-    // Reset price when tier changes (will be auto-populated by useEffect)
+    // Update tier and reset user edit flag to allow auto-population
     setFormData((prev) => ({
       ...prev,
       tier: value,
-      pricePerUnit: "",
+      pricePerUnit: userEditedPrice ? prev.pricePerUnit : "",
     }));
+    // Reset user edit flag when tier changes to allow auto-population
+    setUserEditedPrice(false);
+    lastPriceUpdateRef.current = "";
   };
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -226,6 +237,15 @@ export default function CreateOrderPage() {
       ...prev,
       [field]: value,
     }));
+  };
+
+  const handlePriceChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      pricePerUnit: value,
+    }));
+    // Mark that user has manually edited the price
+    setUserEditedPrice(true);
   };
 
   const getOrderTypeDescription = () => {
@@ -337,11 +357,11 @@ export default function CreateOrderPage() {
                     min="0.001"
                     placeholder="0.000"
                     value={formData.pricePerUnit}
-                    readOnly
-                    className="bg-muted cursor-not-allowed"
+                    onChange={(e) => handlePriceChange(e.target.value)}
+                    required
                   />
                   <p className="text-xs text-muted-foreground">
-                    Auto-set based on pricing page
+                    Auto-filled from pricing page, but you can edit if needed
                   </p>
                 </div>
 
